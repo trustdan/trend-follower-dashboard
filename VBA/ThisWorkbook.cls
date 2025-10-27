@@ -1,7 +1,3 @@
-VERSION 1.0 CLASS
-BEGIN
-  MultiUse = -1  'True
-END
 Attribute VB_Name = "ThisWorkbook"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
@@ -29,7 +25,7 @@ Private Sub Workbook_Open()
             "Would you like to run the setup now?" & vbCrLf & _
             "(This will create all required sheets and tables)", _
             vbYesNo + vbQuestion, "First-Time Setup")
-
+    
         If response = vbYes Then
             Call EnsureStructure
         End If
@@ -37,7 +33,7 @@ Private Sub Workbook_Open()
         ' Structure exists - just activate TradeEntry
         Sheets("TradeEntry").Activate
     End If
-
+    
     On Error GoTo 0
 End Sub
 

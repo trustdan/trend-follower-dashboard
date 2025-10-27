@@ -299,3 +299,46 @@ def _test_scraper():
 if __name__ == "__main__":
     # Run test if executed directly
     _test_scraper()
+
+if __name__ == "__main__":
+    import argparse, json, csv, os, sys
+    from datetime import datetime
+
+    parser = argparse.ArgumentParser(description="Fetch FINVIZ tickers and write a CSV")
+    g = parser.add_mutually_exclusive_group(required=True)
+    g.add_argument("--query", help="FINVIZ query string (e.g., v=211&p=d&f=...)")
+    g.add_argument("--url", help="Full FINVIZ URL")
+    g.add_argument("--preset-file", help="JSON file with list of {name, query|url}")
+    parser.add_argument("--out", required=True, help="Output CSV path")
+    args = parser.parse_args()
+
+    rows = []  # each row: {"Ticker": "...", "Preset": "...", "AsOf": "YYYY-MM-DD"}
+    asof = datetime.utcnow().date().isoformat()
+
+    def write_rows(path, rows):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=["Ticker", "Preset", "AsOf"])
+            w.writeheader()
+            for r in rows:
+                w.writerow(r)
+
+    if args.preset_file:
+        with open(args.preset_file, "r", encoding="utf-8") as f:
+            presets = json.load(f)
+        for p in presets:
+            name = p.get("name", "Preset")
+            q = p.get("query")
+            u = p.get("url")
+            tickers = fetch_finviz_tickers(q if q else u)
+            for t in tickers:
+                rows.append({"Ticker": t, "Preset": name, "AsOf": asof})
+
+    else:
+        q_or_u = args.query if args.query else args.url
+        tickers = fetch_finviz_tickers(q_or_u)
+        for t in tickers:
+            rows.append({"Ticker": t, "Preset": "Ad-hoc", "AsOf": asof})
+
+    write_rows(args.out, rows)
+    print(f"[OK] Wrote {len(rows)} tickers → {args.out}")

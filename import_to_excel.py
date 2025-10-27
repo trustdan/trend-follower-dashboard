@@ -1,272 +1,238 @@
 #!/usr/bin/env python3
-"""
-VBA Import Automation Script for Excel Trading Workbook
-
-This script automates the import of VBA modules into an Excel workbook.
-
-Requirements:
-    - Python 3.7+
-    - openpyxl (install: pip install openpyxl)
-    - xlwings (install: pip install xlwings)
-    - Windows OS (for COM automation)
-
-Usage:
-    python import_to_excel.py [workbook_path]
-
-    If no workbook path provided, creates a new workbook:
-        TrendFollowing_TradeEntry.xlsm
-
-Note:
-    This script uses Windows COM automation (requires Windows + Excel installed).
-    For manual import, see VBA_SETUP_GUIDE.md
-"""
-
-import os
-import sys
 from pathlib import Path
+import sys
 
-# Try to import required libraries
+# --- COM setup ---------------------------------------------------------------
 try:
-    import win32com.client
+    import win32com.client as win32
+    from pywintypes import com_error
     COM_AVAILABLE = True
-except ImportError:
+except Exception as e:
     COM_AVAILABLE = False
-    print("⚠ WARNING: win32com not available. Install with: pip install pywin32")
+    print("❌ pywin32 not available:", e)
 
-def get_script_dir():
-    """Returns the directory where this script is located."""
+def script_dir() -> Path:
     return Path(__file__).parent.resolve()
 
 def find_vba_modules():
-    """Finds all VBA module files in the VBA/ folder."""
-    script_dir = get_script_dir()
-    vba_dir = script_dir / "VBA"
-
-    if not vba_dir.exists():
-        print(f"❌ Error: VBA folder not found at {vba_dir}")
-        return None
-
-    # Find all .bas and .cls files
-    modules = {
-        'standard': list(vba_dir.glob("*.bas")),
-        'class': list(vba_dir.glob("*.cls"))
+    """Return dict of module paths in ./VBA (ok if empty)."""
+    vba = script_dir() / "VBA"
+    if not vba.exists():
+        print(f"⚠ VBA folder not found at {vba} (continuing; workbook will be created without modules).")
+        return {"standard": [], "class": []}
+    return {
+        "standard": sorted(vba.glob("*.bas")),
+        "class": sorted(vba.glob("*.cls")),
     }
 
-    return modules
-
-def import_vba_modules_com(workbook_path=None):
-    """
-    Import VBA modules using Windows COM automation.
-
-    Args:
-        workbook_path: Path to existing .xlsm file, or None to create new
-    """
+def import_vba_modules_com(target_path: Path | None) -> bool:
     if not COM_AVAILABLE:
-        print("❌ Cannot proceed: pywin32 not installed")
-        print("   Install with: pip install pywin32")
+        print("❌ Cannot proceed: pywin32 not installed (pip install pywin32)")
         return False
 
-    script_dir = get_script_dir()
+    print("Starting Excel…")
+    xl = win32.Dispatch("Excel.Application")
+    xl.Visible = True
+    xl.DisplayAlerts = False
 
-    # Start Excel
-    print("Starting Excel...")
-    excel = win32com.client.Dispatch("Excel.Application")
-    excel.Visible = True
-    excel.DisplayAlerts = False
-
-    # Open or create workbook
-    if workbook_path and Path(workbook_path).exists():
-        print(f"Opening workbook: {workbook_path}")
-        wb = excel.Workbooks.Open(str(Path(workbook_path).resolve()))
+    # Open if exists, otherwise create a new workbook
+    wb = None
+    if target_path and target_path.exists():
+        print(f"Opening workbook: {target_path}")
+        wb = xl.Workbooks.Open(str(target_path))
     else:
-        print("Creating new workbook...")
-        wb = excel.Workbooks.Add()
-        default_path = script_dir / "TrendFollowing_TradeEntry.xlsm"
-        print(f"Will save as: {default_path}")
+        print("Creating new workbook…")
+        wb = xl.Workbooks.Add()
 
-    # Find VBA modules
-    modules = find_vba_modules()
-    if not modules:
-        excel.Quit()
+    # Try to access VBProject (fails if Trust Center blocks it)
+    try:
+        vbproj = wb.VBProject
+    except com_error:
+        print("❌ Excel blocked programmatic VBProject access.")
+        print("   Enable: File → Options → Trust Center → Trust Center Settings → Macro Settings")
+        print("   Check:  ‘Trust access to the VBA project object model’.")
+        xl.Quit()
         return False
 
-    # Import standard modules
-    vb_project = wb.VBProject
-    imported_count = 0
+    mods = find_vba_modules()
+    imported = 0
 
-    print("\n📥 Importing standard modules...")
-    for module_path in modules['standard']:
+    # Import .bas (standard modules)
+    if mods["standard"]:
+        print("\n📥 Importing standard modules…")
+        for p in mods["standard"]:
+            try:
+                vbproj.VBComponents.Import(str(p))
+                print(f"  ✅ {p.name}")
+                imported += 1
+            except Exception as e:
+                print(f"  ❌ {p.name}: {e}")
+
+    # Run TF_Data.EnsureStructure to create sheets, tables, and data (needed before importing Sheet_*.cls)
+    print("\n🔧 Running TF_Data.EnsureStructure to create workbook structure…")
+    try:
+        # Disable alerts to suppress the msgbox
+        xl.DisplayAlerts = False
+        xl.Run("TF_Data.EnsureStructure")
+        xl.DisplayAlerts = True
+        print("  ✅ TF_Data.EnsureStructure completed")
+        print("     - Sheets created (8)")
+        print("     - Tables created (5)")
+        print("     - Named ranges created (7)")
+        print("     - Default data seeded")
+    except Exception as e:
+        xl.DisplayAlerts = True
+        print(f"  ⚠ TF_Data.EnsureStructure not available or failed: {e}")
+        print("  (You may need to run TF_Data.EnsureStructure manually)")
+
+    # Run TF_UI_Builder.InitializeUI to create the TradeEntry UI
+    print("\n🎨 Running TF_UI_Builder.InitializeUI to build TradeEntry UI…")
+    try:
+        xl.DisplayAlerts = False
+        xl.Run("TF_UI_Builder.InitializeUI")
+        xl.DisplayAlerts = True
+        print("  ✅ TF_UI_Builder.InitializeUI completed")
+        print("     - TradeEntry layout created")
+        print("     - Buttons added (Evaluate, Recalc, Save, Import)")
+        print("     - Formatting applied")
+        print("     - Data validation set up")
+    except Exception as e:
+        xl.DisplayAlerts = True
+        print(f"  ⚠ TF_UI_Builder.InitializeUI not available or failed: {e}")
+        print("  (UI may need manual setup)")
+
+    # Import .cls (special handling for ThisWorkbook.cls and Sheet_*.cls)
+    if mods["class"]:
+        print("\n📥 Importing class modules…")
+        for p in mods["class"]:
+            try:
+                if p.stem == "ThisWorkbook":
+                    # Replace ThisWorkbook code
+                    twb = vbproj.VBComponents("ThisWorkbook")
+                    cm = twb.CodeModule
+                    if cm.CountOfLines > 0:
+                        cm.DeleteLines(1, cm.CountOfLines)
+                    with open(p, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                    start = 0
+                    for i, line in enumerate(lines):
+                        if not line.startswith(("Attribute", "VERSION")):
+                            start = i
+                            break
+                    cm.AddFromString("".join(lines[start:]))
+                    print(f"  ✅ {p.name} (replaced)")
+                    imported += 1
+
+                elif p.stem.startswith("Sheet_"):
+                    # Handle Sheet_*.cls files - replace code in corresponding sheet
+                    sheet_name = p.stem[6:]  # Remove "Sheet_" prefix
+
+                    # Try to find the sheet by CodeName first, then by Name
+                    sheet_comp = None
+                    try:
+                        # Try direct CodeName lookup
+                        sheet_comp = vbproj.VBComponents(sheet_name)
+                    except:
+                        # If not found by CodeName, search all worksheet components
+                        for comp in vbproj.VBComponents:
+                            if comp.Type == 100:  # 100 = Document (worksheet)
+                                try:
+                                    # Check if the worksheet Name matches
+                                    ws_name = wb.Worksheets(comp.Name).Name
+                                    if ws_name == sheet_name:
+                                        sheet_comp = comp
+                                        print(f"  📍 Found sheet '{sheet_name}' with CodeName '{comp.Name}'")
+                                        break
+                                except:
+                                    pass
+
+                    if not sheet_comp:
+                        # Sheet not found - skip importing as class module
+                        print(f"  ⚠ Sheet '{sheet_name}' not found - SKIPPING {p.name}")
+                        print(f"     (Sheet must exist before applying code)")
+                        continue
+
+                    # Replace the sheet's code
+                    cm = sheet_comp.CodeModule
+                    if cm.CountOfLines > 0:
+                        cm.DeleteLines(1, cm.CountOfLines)
+                    with open(p, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                    start = 0
+                    for i, line in enumerate(lines):
+                        if not line.startswith(("Attribute", "VERSION")):
+                            start = i
+                            break
+                    cm.AddFromString("".join(lines[start:]))
+                    print(f"  ✅ {p.name} → Sheet '{sheet_name}' (code replaced)")
+                    imported += 1
+
+                else:
+                    # Regular class module
+                    vbproj.VBComponents.Import(str(p))
+                    print(f"  ✅ {p.name}")
+                    imported += 1
+            except Exception as e:
+                print(f"  ❌ {p.name}: {e}")
+
+    # --- Save / SaveAs logic (always SaveAs when target path is provided) -----
+    try:
+        if target_path:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            print(f"\n💾 Saving to: {target_path}")
+            # Delete existing file if present (avoids save conflicts)
+            if target_path.exists():
+                target_path.unlink()
+                print(f"  (Deleted existing file)")
+            wb.SaveAs(str(target_path), FileFormat=52)  # 52 = .xlsm
+        else:
+            default_path = script_dir() / "TrendFollowing_TradeEntry.xlsm"
+            print(f"\n💾 Saving to: {default_path}")
+            if default_path.exists():
+                default_path.unlink()
+                print(f"  (Deleted existing file)")
+            wb.SaveAs(str(default_path), FileFormat=52)
+
+        print(f"\n✅ Import complete! {imported} modules imported.")
+        print(f"📁 File saved: {target_path or default_path}")
+
+        # Close workbook and quit Excel
+        wb.Close(SaveChanges=False)  # Don't save again, we just saved
+        print("✅ Workbook closed")
+
+        xl.Quit()
+        print("✅ Excel quit successfully")
+
+        xl.DisplayAlerts = True
+        return True
+
+    except Exception as e:
+        print(f"\n❌ Error during save: {e}")
+        print("Attempting to close Excel anyway...")
         try:
-            vb_project.VBComponents.Import(str(module_path))
-            print(f"  ✅ {module_path.name}")
-            imported_count += 1
-        except Exception as e:
-            print(f"  ❌ {module_path.name}: {e}")
-
-    print("\n📥 Importing class modules...")
-    for module_path in modules['class']:
-        try:
-            # Special handling for ThisWorkbook (replace existing)
-            if module_path.stem == "ThisWorkbook":
-                # Remove existing ThisWorkbook code
-                thisworkbook = vb_project.VBComponents("ThisWorkbook")
-                code_module = thisworkbook.CodeModule
-                if code_module.CountOfLines > 0:
-                    code_module.DeleteLines(1, code_module.CountOfLines)
-
-                # Import new code
-                with open(module_path, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-
-                # Skip VBA header lines (Attribute statements)
-                code_start = 0
-                for i, line in enumerate(lines):
-                    if not line.startswith('Attribute') and not line.startswith('VERSION'):
-                        code_start = i
-                        break
-
-                new_code = ''.join(lines[code_start:])
-                code_module.AddFromString(new_code)
-                print(f"  ✅ {module_path.name} (replaced)")
-                imported_count += 1
-            else:
-                # Other class modules can be imported normally
-                vb_project.VBComponents.Import(str(module_path))
-                print(f"  ✅ {module_path.name}")
-                imported_count += 1
-
-        except Exception as e:
-            print(f"  ❌ {module_path.name}: {e}")
-
-    # Save workbook
-    if not workbook_path:
-        save_path = script_dir / "TrendFollowing_TradeEntry.xlsm"
-        wb.SaveAs(str(save_path), FileFormat=52)  # 52 = xlOpenXMLWorkbookMacroEnabled
-        print(f"\n💾 Saved as: {save_path}")
-    else:
-        wb.Save()
-        print(f"\n💾 Saved: {workbook_path}")
-
-    print(f"\n✅ Import complete! {imported_count} modules imported.")
-    print("\nNext steps:")
-    print("1. Run 'EnsureStructure' macro (Alt+F11 → Ctrl+G → type 'EnsureStructure' → Enter)")
-    print("2. Build TradeEntry UI (see VBA_SETUP_GUIDE.md Part 2)")
-    print("3. Test workflow")
-
-    # Don't quit Excel - leave it open for user
-    excel.DisplayAlerts = True
-
-    return True
-
-def create_manual_import_script():
-    """
-    Creates a VBA script that can be run inside Excel to import modules.
-    This is a fallback for when Python COM automation doesn't work.
-    """
-    script_dir = get_script_dir()
-    vba_dir = script_dir / "VBA"
-
-    modules = find_vba_modules()
-    if not modules:
-        return
-
-    script_content = [
-        "' ============================================================================",
-        "' VBA Module Import Script",
-        "' Run this in the VBA Immediate Window (Ctrl+G) to import all modules",
-        "' ============================================================================",
-        "",
-        "Sub ImportAllModules()",
-        "    Dim modulePath As String",
-        f"    Dim vbaFolder As String",
-        f"    vbaFolder = ThisWorkbook.Path & \"\\VBA\\\"",
-        "",
-        "    ' Import standard modules",
-    ]
-
-    for module_path in modules['standard']:
-        script_content.append(f"    ThisWorkbook.VBProject.VBComponents.Import vbaFolder & \"{module_path.name}\"")
-
-    script_content.extend([
-        "",
-        "    ' Import class modules (except ThisWorkbook - needs manual handling)",
-    ])
-
-    for module_path in modules['class']:
-        if module_path.stem != "ThisWorkbook":
-            script_content.append(f"    ThisWorkbook.VBProject.VBComponents.Import vbaFolder & \"{module_path.name}\"")
-
-    script_content.extend([
-        "",
-        "    MsgBox \"Modules imported! Note: ThisWorkbook must be imported manually.\", vbInformation",
-        "End Sub",
-        "",
-        "' ============================================================================",
-        "' Manual Import Instructions:",
-        "' ============================================================================",
-        "' 1. Press Alt+F11 to open VBA Editor",
-        "' 2. Press Ctrl+G to open Immediate Window",
-        "' 3. Paste this entire script into a new module (Insert → Module)",
-        "' 4. Run: ImportAllModules",
-        "' 5. Manually import ThisWorkbook.cls:",
-        "'    - File → Import File → select VBA/ThisWorkbook.cls",
-        "'    - Replace the existing ThisWorkbook module",
-        "' ============================================================================",
-    ])
-
-    output_path = script_dir / "VBA_IMPORT_SCRIPT.txt"
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(script_content))
-
-    print(f"✅ Created manual import script: {output_path}")
-    print("   Copy contents to VBA Editor if Python automation doesn't work")
+            wb.Close(SaveChanges=False)
+            xl.Quit()
+        except:
+            pass
+        return False
 
 def main():
-    """Main entry point."""
     print("=" * 70)
     print("VBA Module Import Automation")
     print("=" * 70)
 
-    # Check for workbook path argument
-    workbook_path = sys.argv[1] if len(sys.argv) > 1 else None
+    # Accept a path even if it doesn't exist (we'll create the workbook there)
+    target = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else None
 
-    if workbook_path and not Path(workbook_path).exists():
-        print(f"❌ Error: Workbook not found: {workbook_path}")
-        return 1
+    # (Optional) list found modules
+    mods = find_vba_modules()
+    print(f"\n📁 Modules found: {len(mods['standard'])} .bas, {len(mods['class'])} .cls")
 
-    # Show what we found
-    modules = find_vba_modules()
-    if modules:
-        print(f"\n📁 Found VBA modules:")
-        print(f"   Standard: {len(modules['standard'])} files")
-        for m in modules['standard']:
-            print(f"     - {m.name}")
-        print(f"   Class: {len(modules['class'])} files")
-        for m in modules['class']:
-            print(f"     - {m.name}")
-    else:
-        return 1
-
-    # Check if COM is available
     if not COM_AVAILABLE:
-        print("\n⚠ Python COM automation not available (pywin32 not installed)")
-        print("  Creating manual import script instead...")
-        create_manual_import_script()
-        print("\n📖 See VBA_SETUP_GUIDE.md for manual import instructions")
         return 1
 
-    # Proceed with automated import
-    print("\n🚀 Starting automated import...")
-    print("   This will open Excel and import all VBA modules.")
-
-    success = import_vba_modules_com(workbook_path)
-
-    if success:
-        # Also create the manual script as backup
-        create_manual_import_script()
-        return 0
-    else:
-        return 1
+    ok = import_vba_modules_com(target)
+    return 0 if ok else 1
 
 if __name__ == "__main__":
     sys.exit(main())
