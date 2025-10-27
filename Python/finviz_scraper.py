@@ -1,208 +1,266 @@
 """
-FINVIZ Web Scraper for Excel Python Integration
+FINVIZ Screener Web Scraper
+Fetches ticker symbols from FINVIZ screener pages with pagination support.
 
-Purpose:
-    Automatically scrapes tickers from FINVIZ screener pages.
-    Eliminates manual copy/paste workflow.
+Usage:
+    # From Excel VBA via =PY() formula
+    tickers = finviz_scraper.fetch_finviz_tickers("v=211&p=d&s=ta_newhigh")
 
-Usage in Excel:
-    =PY("finviz_scraper.fetch_finviz_tickers", Presets!B2)
-
-Dependencies:
-    - requests
-    - beautifulsoup4
-    - lxml (parser)
-
-Author: Generated from newest-Interactive_TF_Workbook_Plan.md
+    # Standalone testing
+    python finviz_scraper.py
 """
 
 import requests
 from bs4 import BeautifulSoup
-from typing import List, Optional
 import time
+import re
+from typing import List, Optional
+
+# Configuration
+BASE_URL = "https://finviz.com/screener.ashx"
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+REQUEST_TIMEOUT = 10
+MAX_RETRIES = 3
+RATE_LIMIT_DELAY = 1  # seconds between requests
 
 
-def fetch_finviz_tickers(query_string: str, max_retries: int = 3) -> List[str]:
+def fetch_finviz_tickers(query_string: str, max_pages: int = 10) -> List[str]:
     """
-    Scrapes FINVIZ screener page and returns list of ticker symbols.
+    Scrapes FINVIZ screener and returns list of tickers.
 
     Args:
-        query_string: The FINVIZ query string from tblPresets[QueryString]
-                     Example: "v=211&p=d&s=ta_newhigh&f=cap_largeover..."
-        max_retries: Number of retry attempts for failed requests
+        query_string: FINVIZ query parameters (e.g., "v=211&s=ta_newhigh")
+        max_pages: Maximum number of pages to scrape (default: 10)
 
     Returns:
-        List of ticker symbols (uppercase, deduped)
-        Returns empty list if scraping fails
+        List of ticker symbols (uppercase, deduped, sorted)
 
     Example:
-        >>> tickers = fetch_finviz_tickers("v=211&p=d&s=ta_newhigh")
+        >>> tickers = fetch_finviz_tickers("v=211&s=ta_newhigh")
         >>> print(tickers)
-        ['AAPL', 'MSFT', 'GOOGL', ...]
+        ['AAPL', 'MSFT', 'TSLA', ...]
     """
-    base_url = "https://finviz.com/screener.ashx"
-    url = f"{base_url}?{query_string}"
+    all_tickers = []
+    page_num = 1
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Connection': 'keep-alive',
-    }
+    while page_num <= max_pages:
+        # Calculate offset for pagination (FINVIZ shows 20 results per page)
+        offset = (page_num - 1) * 20
+        url = f"{BASE_URL}?{query_string}&r={offset + 1}" if offset > 0 else f"{BASE_URL}?{query_string}"
 
-    for attempt in range(max_retries):
+        # Fetch page with retries
+        tickers = _fetch_page_tickers(url)
+
+        if not tickers:
+            # No more results, stop pagination
+            break
+
+        all_tickers.extend(tickers)
+
+        # Check if we've reached the last page
+        if len(tickers) < 20:
+            break
+
+        # Rate limiting
+        if page_num < max_pages:
+            time.sleep(RATE_LIMIT_DELAY)
+
+        page_num += 1
+
+    # Dedupe and sort
+    unique_tickers = list(set(all_tickers))
+    unique_tickers.sort()
+
+    return unique_tickers
+
+
+def _fetch_page_tickers(url: str) -> List[str]:
+    """
+    Fetches tickers from a single FINVIZ page with retry logic.
+
+    Args:
+        url: Complete FINVIZ URL
+
+    Returns:
+        List of tickers found on page (may be empty if error)
+    """
+    headers = {'User-Agent': USER_AGENT}
+
+    for attempt in range(MAX_RETRIES):
         try:
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()  # Raise exception for 4xx/5xx status codes
+            response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
 
-            # Parse HTML
-            soup = BeautifulSoup(response.content, 'lxml')
-
-            # Find the screener results table
-            # FINVIZ uses different table classes - try multiple selectors
-            table = None
-
-            # Try primary selector
-            table = soup.find('table', {'class': 'table-light'})
-
-            # Fallback: Find table with ticker links
-            if not table:
-                table = soup.find('table', {'id': 'screener-table'})
-
-            # Fallback: Find any table with ticker-like content
-            if not table:
-                # Look for table containing ticker cells
-                all_tables = soup.find_all('table')
-                for t in all_tables:
-                    if t.find('a', href=lambda x: x and '/quote.ashx?t=' in x):
-                        table = t
-                        break
-
-            if not table:
-                print(f"Warning: Could not find screener table in HTML (attempt {attempt + 1}/{max_retries})")
-                if attempt < max_retries - 1:
-                    time.sleep(1)  # Wait before retry
-                    continue
+            if response.status_code == 200:
+                return _parse_tickers_from_html(response.content)
+            elif response.status_code == 404:
+                # Page doesn't exist, stop trying
                 return []
-
-            # Extract tickers from table
-            tickers = []
-
-            # Method 1: Look for ticker links in cells
-            ticker_links = table.find_all('a', href=lambda x: x and '/quote.ashx?t=' in x)
-            for link in ticker_links:
-                ticker = link.get_text(strip=True)
-                if ticker and len(ticker) <= 5:  # Basic validation
-                    tickers.append(ticker.upper())
-
-            # Method 2: If no links found, look in second column of data rows
-            if not tickers:
-                rows = table.find_all('tr')
-                for row in rows[1:]:  # Skip header row
-                    cells = row.find_all('td')
-                    if len(cells) >= 2:
-                        # Ticker is typically in 2nd column (index 1)
-                        ticker_cell = cells[1]
-                        ticker = ticker_cell.get_text(strip=True)
-                        if ticker and len(ticker) <= 5:
-                            tickers.append(ticker.upper())
-
-            # Dedupe while preserving order
-            seen = set()
-            unique_tickers = []
-            for ticker in tickers:
-                if ticker not in seen:
-                    seen.add(ticker)
-                    unique_tickers.append(ticker)
-
-            if unique_tickers:
-                return unique_tickers
             else:
-                print(f"Warning: No tickers found in table (attempt {attempt + 1}/{max_retries})")
-                if attempt < max_retries - 1:
-                    time.sleep(1)
+                # Server error, retry
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
                     continue
+                else:
+                    return []
+
+        except requests.Timeout:
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(2 ** attempt)
+                continue
+            else:
                 return []
-
-        except requests.exceptions.Timeout:
-            print(f"Timeout error (attempt {attempt + 1}/{max_retries})")
-            if attempt < max_retries - 1:
-                time.sleep(2)
-                continue
-            return []
-
-        except requests.exceptions.RequestException as e:
-            print(f"Request error: {e} (attempt {attempt + 1}/{max_retries})")
-            if attempt < max_retries - 1:
-                time.sleep(2)
-                continue
-            return []
-
-        except Exception as e:
-            print(f"Unexpected error: {e}")
+        except requests.RequestException:
             return []
 
     return []
+
+
+def _parse_tickers_from_html(html_content: bytes) -> List[str]:
+    """
+    Parses ticker symbols from FINVIZ HTML content.
+
+    Args:
+        html_content: Raw HTML bytes from FINVIZ
+
+    Returns:
+        List of ticker symbols found in the screener table
+    """
+    soup = BeautifulSoup(html_content, 'html.parser')
+    tickers = []
+
+    # FINVIZ uses different table structures, try multiple selectors
+
+    # Method 1: Look for screener-body-table-nw class (current FINVIZ structure)
+    ticker_links = soup.find_all('a', class_='screener-link-primary')
+    if ticker_links:
+        for link in ticker_links:
+            ticker = link.get_text().strip()
+            if ticker and len(ticker) <= 5:  # Basic validation
+                tickers.append(ticker.upper())
+        return tickers
+
+    # Method 2: Fallback - look for links to quote.ashx (ticker detail pages)
+    ticker_links = soup.find_all('a', href=re.compile(r'quote\.ashx\?t='))
+    if ticker_links:
+        for link in ticker_links:
+            ticker = link.get_text().strip()
+            if ticker and len(ticker) <= 5:
+                tickers.append(ticker.upper())
+        return tickers
+
+    # Method 3: Fallback - look for table with class 'table-light' or specific structure
+    tables = soup.find_all('table')
+    for table in tables:
+        rows = table.find_all('tr')
+        for row in rows[1:]:  # Skip header row
+            cells = row.find_all('td')
+            if len(cells) > 1:
+                # Ticker is typically in the 2nd cell (index 1)
+                ticker_cell = cells[1]
+                ticker_text = ticker_cell.get_text().strip()
+
+                # Clean ticker symbol
+                ticker = re.sub(r'[^A-Z\-]', '', ticker_text.upper())
+                if ticker and len(ticker) <= 5:
+                    tickers.append(ticker)
+
+    return list(set(tickers))  # Dedupe before returning
 
 
 def normalize_tickers(raw_list: List[str]) -> List[str]:
     """
     Cleans and normalizes ticker symbols.
 
-    Removes:
-        - Special characters (except hyphens)
-        - Duplicates
-        - Blanks
-        - Tickers longer than 5 characters
-
     Args:
-        raw_list: List of raw ticker strings
+        raw_list: Raw list of ticker strings (may contain special chars, duplicates)
 
     Returns:
-        List of clean, uppercase, deduped ticker symbols
+        List of clean uppercase tickers (deduped, validated)
 
     Example:
-        >>> normalize_tickers(['AAPL', 'aapl', 'MSFT.A', '', 'BRK-B', 'TOOLONG'])
-        ['AAPL', 'MSFT-A', 'BRK-B']
+        >>> normalize_tickers(['AAPL', 'msft', 'AAPL', 'T.S.L.A', ''])
+        ['AAPL', 'MSFT', 'TSLA']
     """
     normalized = []
-    seen = set()
 
     for ticker in raw_list:
         if not ticker:
             continue
 
-        # Clean ticker
-        clean = str(ticker).strip().upper()
-        clean = clean.replace('.', '-')  # Convert periods to hyphens
+        # Convert to uppercase and strip whitespace
+        clean = ticker.strip().upper()
 
-        # Remove invalid characters (keep only letters, numbers, hyphens)
-        clean = ''.join(c for c in clean if c.isalnum() or c == '-')
+        # Replace dots with dashes (e.g., BRK.B → BRK-B)
+        clean = clean.replace('.', '-')
 
-        # Validate length and uniqueness
-        if clean and len(clean) <= 5 and clean not in seen:
+        # Remove any other special characters except dashes
+        clean = re.sub(r'[^A-Z0-9\-]', '', clean)
+
+        # Basic validation: 1-5 characters, at least one letter
+        if clean and len(clean) <= 5 and re.search(r'[A-Z]', clean):
             normalized.append(clean)
-            seen.add(clean)
 
-    return normalized
+    # Dedupe and sort
+    return sorted(list(set(normalized)))
+
+
+def get_ticker_count(query_string: str) -> Optional[int]:
+    """
+    Returns the total number of tickers for a given query (without fetching all pages).
+
+    Args:
+        query_string: FINVIZ query parameters
+
+    Returns:
+        Total ticker count, or None if error
+
+    Example:
+        >>> count = get_ticker_count("v=211&s=ta_newhigh")
+        >>> print(f"Found {count} tickers")
+    """
+    url = f"{BASE_URL}?{query_string}"
+    headers = {'User-Agent': USER_AGENT}
+
+    try:
+        response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+        if response.status_code != 200:
+            return None
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Look for total count text (e.g., "Total: 47")
+        count_text = soup.find(text=re.compile(r'Total:\s*\d+'))
+        if count_text:
+            match = re.search(r'Total:\s*(\d+)', count_text)
+            if match:
+                return int(match.group(1))
+
+        # Fallback: count rows in current page
+        tickers = _parse_tickers_from_html(response.content)
+        return len(tickers) if tickers else None
+
+    except Exception:
+        return None
 
 
 def fetch_multiple_presets(preset_queries: dict) -> dict:
     """
-    Fetches tickers from multiple presets in one call.
+    Batch fetch tickers from multiple FINVIZ presets.
 
     Args:
-        preset_queries: Dict mapping preset names to query strings
-                       Example: {"TF_BREAKOUT_LONG": "v=211&p=d&s=ta_newhigh...",
-                                "TF_MOMENTUM": "v=211&p=d&f=cap_largeover..."}
+        preset_queries: Dict of {preset_name: query_string}
 
     Returns:
-        Dict mapping preset names to lists of tickers
-        Example: {"TF_BREAKOUT_LONG": ["AAPL", "MSFT"],
-                 "TF_MOMENTUM": ["GOOGL", "AMZN"]}
+        Dict of {preset_name: [tickers]}
 
-    Note:
-        Adds 1-second delay between requests to avoid rate limiting
+    Example:
+        >>> presets = {
+        ...     "Breakout": "v=211&s=ta_newhigh",
+        ...     "Momentum": "v=211&s=ta_topgainers"
+        ... }
+        >>> results = fetch_multiple_presets(presets)
+        >>> print(results)
+        {'Breakout': ['AAPL', 'MSFT'], 'Momentum': ['TSLA', 'NVDA']}
     """
     results = {}
 
@@ -210,135 +268,44 @@ def fetch_multiple_presets(preset_queries: dict) -> dict:
         tickers = fetch_finviz_tickers(query_string)
         results[preset_name] = tickers
 
-        # Rate limiting: wait 1 second between requests
-        if len(preset_queries) > 1:
-            time.sleep(1)
+        # Rate limiting between presets
+        time.sleep(RATE_LIMIT_DELAY * 2)
 
     return results
 
 
-def get_ticker_count(query_string: str) -> Optional[int]:
-    """
-    Gets the total count of tickers matching a screener without fetching all tickers.
-
-    Args:
-        query_string: The FINVIZ query string
-
-    Returns:
-        Integer count of matching tickers, or None if count cannot be determined
-
-    Example:
-        >>> count = get_ticker_count("v=211&p=d&s=ta_newhigh")
-        >>> print(f"Found {count} tickers")
-        Found 47 tickers
-    """
-    base_url = "https://finviz.com/screener.ashx"
-    url = f"{base_url}?{query_string}"
-
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.content, 'lxml')
-
-        # Look for count text (e.g., "Total: 47")
-        count_element = soup.find('td', {'class': 'count-text'})
-        if count_element:
-            count_text = count_element.get_text(strip=True)
-            # Extract number from text like "Total: 47"
-            import re
-            match = re.search(r'(\d+)', count_text)
-            if match:
-                return int(match.group(1))
-
-        # Fallback: count rows in table
-        table = soup.find('table', {'class': 'table-light'})
-        if table:
-            rows = table.find_all('tr')
-            return len(rows) - 1  # Subtract header row
-
-        return None
-
-    except Exception as e:
-        print(f"Error getting ticker count: {e}")
-        return None
-
-
-# Test function for development
 def _test_scraper():
     """
-    Test function - not called by Excel.
-    Run this in Python to verify scraper works before using in Excel.
+    Standalone test function for development/debugging.
+    Run: python finviz_scraper.py
     """
-    # Test query: 52-week highs, large cap, above SMAs
-    test_query = "v=211&p=d&s=ta_newhigh&f=cap_largeover,sh_avgvol_o1000,sh_price_o20,ta_sma50_pa,ta_sma200_pa&o=-relativevolume"
+    print("=" * 70)
+    print("FINVIZ Scraper Test")
+    print("=" * 70)
 
-    print("Testing FINVIZ scraper...")
-    print(f"Query: {test_query[:50]}...")
+    # Test preset: New Highs
+    test_query = "v=211&f=ta_highlow52w_nh&ft=4"
 
-    tickers = fetch_finviz_tickers(test_query)
+    print(f"\nTesting query: {test_query}")
+    print(f"URL: {BASE_URL}?{test_query}")
+    print("\nFetching tickers...")
+
+    tickers = fetch_finviz_tickers(test_query, max_pages=2)
 
     if tickers:
         print(f"\n✅ Success! Found {len(tickers)} tickers:")
-        print(f"First 10: {tickers[:10]}")
+        print(", ".join(tickers[:20]))  # Show first 20
+        if len(tickers) > 20:
+            print(f"... and {len(tickers) - 20} more")
     else:
-        print("\n❌ No tickers found. Check FINVIZ website or query string.")
+        print("\n❌ No tickers found. Possible reasons:")
+        print("  - No internet connection")
+        print("  - FINVIZ changed HTML structure")
+        print("  - Query returned no results")
+        print("  - Rate limited by FINVIZ")
 
-    # Test normalization
-    test_raw = ['AAPL', 'aapl', 'MSFT.A', '', 'BRK-B', 'TOOLONGticker', '123']
-    normalized = normalize_tickers(test_raw)
-    print(f"\nNormalization test:")
-    print(f"Input:  {test_raw}")
-    print(f"Output: {normalized}")
+    print("\n" + "=" * 70)
 
 
 if __name__ == "__main__":
-    # Run test if executed directly
     _test_scraper()
-
-if __name__ == "__main__":
-    import argparse, json, csv, os, sys
-    from datetime import datetime
-
-    parser = argparse.ArgumentParser(description="Fetch FINVIZ tickers and write a CSV")
-    g = parser.add_mutually_exclusive_group(required=True)
-    g.add_argument("--query", help="FINVIZ query string (e.g., v=211&p=d&f=...)")
-    g.add_argument("--url", help="Full FINVIZ URL")
-    g.add_argument("--preset-file", help="JSON file with list of {name, query|url}")
-    parser.add_argument("--out", required=True, help="Output CSV path")
-    args = parser.parse_args()
-
-    rows = []  # each row: {"Ticker": "...", "Preset": "...", "AsOf": "YYYY-MM-DD"}
-    asof = datetime.utcnow().date().isoformat()
-
-    def write_rows(path, rows):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=["Ticker", "Preset", "AsOf"])
-            w.writeheader()
-            for r in rows:
-                w.writerow(r)
-
-    if args.preset_file:
-        with open(args.preset_file, "r", encoding="utf-8") as f:
-            presets = json.load(f)
-        for p in presets:
-            name = p.get("name", "Preset")
-            q = p.get("query")
-            u = p.get("url")
-            tickers = fetch_finviz_tickers(q if q else u)
-            for t in tickers:
-                rows.append({"Ticker": t, "Preset": name, "AsOf": asof})
-
-    else:
-        q_or_u = args.query if args.query else args.url
-        tickers = fetch_finviz_tickers(q_or_u)
-        for t in tickers:
-            rows.append({"Ticker": t, "Preset": "Ad-hoc", "AsOf": asof})
-
-    write_rows(args.out, rows)
-    print(f"[OK] Wrote {len(rows)} tickers → {args.out}")

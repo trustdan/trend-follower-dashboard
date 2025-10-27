@@ -1,0 +1,74 @@
+================================================================================
+                    QUICK FIX - DROPDOWN ERROR
+================================================================================
+
+ERROR MESSAGE:
+    "Some dropdowns could not be created: Preset dropdown:
+     Application-defined or object-defined error"
+
+CAUSE:
+    Data tables haven't been created yet
+
+SOLUTION (30 seconds):
+
+    Step 1: Look at the bottom of Excel
+            ┌─────────────────────────────────────────────┐
+            │ [Sheet1] [TradeEntry] [Setup] [Presets] ... │
+            │                          ↑                   │
+            │                     CLICK HERE               │
+            └─────────────────────────────────────────────┘
+
+    Step 2: Scroll down to find buttons section
+
+    Step 3: Click the BIG button
+            ┌───────────────────────────┐
+            │  ▶ RUN INITIAL SETUP      │ ← CLICK THIS!
+            │        (Large button)      │
+            └───────────────────────────┘
+
+    Step 4: Wait for "Setup Complete!" message (5-10 seconds)
+
+    Step 5: ✅ DONE! Dropdowns should work now.
+
+================================================================================
+
+ALTERNATIVE METHOD (If button doesn't work):
+
+    Step 1: Press Alt + F11 (opens VBA Editor)
+
+    Step 2: Press Ctrl + G (opens Immediate window at bottom)
+
+    Step 3: Type this EXACTLY:
+            Setup.RunInitialSetup
+
+    Step 4: Press Enter
+
+    Step 5: Wait for "Setup Complete!" message
+
+    Step 6: Press Alt + Q (closes VBA Editor)
+
+    Step 7: ✅ DONE!
+
+================================================================================
+
+WHAT THIS DOES:
+    ✓ Creates all data sheets (Presets, Buckets, Candidates, etc.)
+    ✓ Creates all data tables (tblPresets, tblBuckets, etc.)
+    ✓ Adds default data (5 presets, 6 buckets)
+    ✓ Builds the TradeEntry UI
+    ✓ Sets up all dropdowns
+
+AFTER RUNNING:
+    • Go to TradeEntry sheet
+    • Click cell B5 (Preset field)
+    • You should see a dropdown with 5 preset options
+    • No more error messages!
+
+================================================================================
+
+STILL HAVING ISSUES?
+    1. Click "Open Debug Log" button (on Setup sheet)
+    2. Look for error messages
+    3. Share the log file for help
+
+================================================================================

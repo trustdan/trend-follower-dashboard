@@ -1,16 +1,5 @@
-# Python Requirements for Excel Trading Workflow
-# Install with: pip install -r requirements.txt
-
-# Web scraping
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
-
-# Data processing
 pandas>=2.0.0
 numpy>=1.24.0
-
-pywin32>=305
-
-# Optional: For standalone testing outside Excel
-openpyxl>=3.1.0  # Excel file manipulation (not needed in Excel Python)
