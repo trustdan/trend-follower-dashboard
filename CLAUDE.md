@@ -324,16 +324,60 @@ Base URL: `https://finviz.com/screener.ashx?`
 ## File Organization
 
 ```
-/
-├── workflow-plan.md                              # High-level workflow & invariants
-├── newest-Interactive_TF_Workbook_Plan.md       # Detailed spec for main workbook
-├── older-Options_Trend_Dashboard_Summary.md     # Calendar dashboard + VBA code
-├── SeykotaTurtleTrend-FollowingOptionsExecution+TradingViewStrategyGuide.md
-│                                                 # TradingView strategy guide + Pine code
-├── diversification-across-sectors.md            # Sector/bucket risk framework
-├── diversification-across-sectors.pdf           # Visual diagrams
-├── Options_Trading_Calendar_dynamic.xlsm        # Actual Excel workbook (binary)
-└── CLAUDE.md                                    # This file
+/home/kali/excel-trading-workflow/
+│
+├── BUILD_WITH_PYTHON.bat                        # Automated build script (Windows)
+├── import_to_excel.py                            # Python automation for workbook creation
+├── TrendFollowing_TradeEntry.xlsm               # Generated workbook (after build)
+│
+├── scripts/                                      # Utility scripts
+│   ├── setup_venv.bat                           # Virtual environment setup
+│   └── deprecated/                              # Archived old scripts
+│
+├── VBA/                                          # VBA modules (12 files)
+│   ├── TF_Utils.bas                             # Helper functions
+│   ├── TF_Data.bas                              # Structure setup
+│   ├── TF_UI.bas                                # UI interactions
+│   ├── TF_Presets.bas                           # FINVIZ integration
+│   ├── TF_Config.bas                            # Configuration
+│   ├── TF_PortfolioHeat.bas                     # Heat calculations
+│   ├── TF_PositionSizing.bas                    # Sizing logic
+│   ├── TF_Cooldown.bas                          # Cooldown logic
+│   ├── TF_Validation.bas                        # Input validation
+│   ├── TF_Logging.bas                           # Audit trail
+│   ├── ThisWorkbook.cls                         # Workbook events
+│   └── Sheet_TradeEntry.cls                     # Sheet events
+│
+├── Python/                                       # Optional Python enhancements
+│   ├── finviz_scraper.py                        # Auto-scrape FINVIZ
+│   ├── heat_calculator.py                       # Fast heat calculations
+│   ├── TF_Python_Bridge.bas                     # VBA-Python integration
+│   ├── TF_Presets_Enhanced.bas                  # Enhanced FINVIZ import
+│   └── requirements.txt                         # Dependencies
+│
+├── docs/                                         # Documentation (organized)
+│   ├── setup/                                   # Setup guides
+│   │   ├── GETTING_STARTED.md
+│   │   ├── VBA_SETUP_GUIDE.md
+│   │   ├── PYTHON_SETUP_GUIDE.md
+│   │   └── QUICK_START.md
+│   ├── specifications/                          # System specs
+│   │   ├── newest-Interactive_TF_Workbook_Plan.md
+│   │   ├── workflow-plan.md
+│   │   ├── diversification-across-sectors.md
+│   │   └── SeykotaTurtleTrend-FollowingOptionsExecution+TradingViewStrategyGuide.md
+│   ├── reference/                               # Reference docs
+│   │   ├── VBA_README.md
+│   │   ├── TWO_BUILD_OPTIONS.md
+│   │   ├── TROUBLESHOOTING_BUILD_ISSUES.md
+│   │   └── older-Options_Trend_Dashboard_Summary.md
+│   └── archive/                                 # Outdated/historical docs
+│
+├── logs/archive/                                 # Old build logs
+├── venv/                                         # Python virtual environment
+│
+├── README.md                                     # Comprehensive guide (START HERE)
+└── CLAUDE.md                                     # This file (AI assistant reference)
 ```
 
 ---
