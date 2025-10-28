@@ -19,6 +19,7 @@ Option Explicit
 
 ' Position sizing result (from "size" command)
 Public Type TFSizingResult
+    Success As Boolean          ' True if parsing succeeded
     RiskDollars As Double       ' R = Equity × RiskPct
     StopDistance As Double      ' K × ATR
     InitialStop As Double       ' Entry - StopDistance
@@ -34,6 +35,7 @@ End Type
 
 ' Checklist evaluation result (from "checklist" command)
 Public Type TFChecklistResult
+    Success As Boolean                  ' True if parsing succeeded
     Banner As String                    ' "GREEN", "YELLOW", "RED"
     MissingCount As Long                ' Number of failed checks
     MissingItems As String              ' Comma-separated list of missing items
@@ -47,6 +49,7 @@ End Type
 
 ' Heat check result (from "heat" command)
 Public Type TFHeatResult
+    Success As Boolean                  ' True if parsing succeeded
     CurrentPortfolioHeat As Double      ' Sum of risk across all open positions
     NewPortfolioHeat As Double          ' Current + proposed trade risk
     PortfolioHeatPct As Double          ' (New / Cap) × 100
@@ -182,10 +185,11 @@ End Type
 
 ' Save decision result (from "save-decision" command)
 Public Type TFSaveDecisionResult
-    Accepted As Boolean                 ' True if all 5 hard gates passed
+    Success As Boolean                  ' True if parsing succeeded
+    Saved As Boolean                    ' True if all 5 hard gates passed
     DecisionID As Long                  ' Database ID if accepted (0 if rejected)
     Timestamp As String                 ' ISO8601 timestamp
-    Reason As String                    ' Rejection reason (empty if accepted)
+    RejectionReason As String           ' Rejection reason (empty if accepted)
     GatesFailed As String               ' Comma-separated list of failed gates
 End Type
 

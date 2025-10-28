@@ -221,6 +221,8 @@ End Function
 
 ' ParseSizingJSON parses position sizing JSON into TFSizingResult
 Public Sub ParseSizingJSON(ByVal jsonStr As String, ByRef result As TFSizingResult)
+    On Error GoTo ErrorHandler
+    result.Success = False
     result.RiskDollars = CDbl(ExtractJSONValue(jsonStr, "risk_dollars"))
     result.StopDistance = CDbl(ExtractJSONValue(jsonStr, "stop_distance"))
     result.InitialStop = CDbl(ExtractJSONValue(jsonStr, "initial_stop"))
@@ -228,14 +230,20 @@ Public Sub ParseSizingJSON(ByVal jsonStr As String, ByRef result As TFSizingResu
     result.Contracts = CLng(ExtractJSONValue(jsonStr, "contracts"))
     result.ActualRisk = CDbl(ExtractJSONValue(jsonStr, "actual_risk"))
     result.Method = ExtractJSONValue(jsonStr, "method")
+    result.Success = True
+    Exit Sub
+ErrorHandler:
+    result.Success = False
 End Sub
 
 ' ParseChecklistJSON parses checklist evaluation JSON into TFChecklistResult
 Public Sub ParseChecklistJSON(ByVal jsonStr As String, ByRef result As TFChecklistResult)
+    On Error GoTo ErrorHandler
     Dim missingArray As Collection
     Dim missingStr As String
     Dim item As Variant
 
+    result.Success = False
     result.Banner = ExtractJSONValue(jsonStr, "banner")
     result.MissingCount = CLng(ExtractJSONValue(jsonStr, "missing_count"))
     result.EvaluationTimestamp = ExtractJSONValue(jsonStr, "evaluation_timestamp")
@@ -257,10 +265,16 @@ Public Sub ParseChecklistJSON(ByVal jsonStr As String, ByRef result As TFCheckli
         missingStr = missingStr & item
     Next item
     result.MissingItems = missingStr
+    result.Success = True
+    Exit Sub
+ErrorHandler:
+    result.Success = False
 End Sub
 
 ' ParseHeatJSON parses heat check JSON into TFHeatResult
 Public Sub ParseHeatJSON(ByVal jsonStr As String, ByRef result As TFHeatResult)
+    On Error GoTo ErrorHandler
+    result.Success = False
     result.CurrentPortfolioHeat = CDbl(ExtractJSONValue(jsonStr, "current_portfolio_heat"))
     result.NewPortfolioHeat = CDbl(ExtractJSONValue(jsonStr, "new_portfolio_heat"))
     result.PortfolioHeatPct = CDbl(ExtractJSONValue(jsonStr, "portfolio_heat_pct"))
@@ -276,6 +290,10 @@ Public Sub ParseHeatJSON(ByVal jsonStr As String, ByRef result As TFHeatResult)
     result.BucketOverage = CDbl(ExtractJSONValue(jsonStr, "bucket_overage"))
 
     result.Allowed = (LCase(ExtractJSONValue(jsonStr, "allowed")) = "true")
+    result.Success = True
+    Exit Sub
+ErrorHandler:
+    result.Success = False
 End Sub
 
 ' ParseTimerJSON parses impulse timer JSON into TFTimerResult
@@ -315,7 +333,9 @@ End Sub
 
 ' ParseSaveDecisionJSON parses save-decision JSON into TFSaveDecisionResult
 Public Sub ParseSaveDecisionJSON(ByVal jsonStr As String, ByRef result As TFSaveDecisionResult)
-    result.Accepted = (LCase(ExtractJSONValue(jsonStr, "accepted")) = "true")
+    On Error GoTo ErrorHandler
+    result.Success = False
+    result.Saved = (LCase(ExtractJSONValue(jsonStr, "accepted")) = "true")
 
     Dim decisionIDStr As String
     decisionIDStr = ExtractJSONValue(jsonStr, "decision_id")
@@ -326,8 +346,12 @@ Public Sub ParseSaveDecisionJSON(ByVal jsonStr As String, ByRef result As TFSave
     End If
 
     result.Timestamp = ExtractJSONValue(jsonStr, "timestamp")
-    result.Reason = ExtractJSONValue(jsonStr, "reason")
+    result.RejectionReason = ExtractJSONValue(jsonStr, "reason")
     result.GatesFailed = ExtractJSONValue(jsonStr, "gates_failed")
+    result.Success = True
+    Exit Sub
+ErrorHandler:
+    result.Success = False
 End Sub
 
 '-----------------------------------------------------------------------------

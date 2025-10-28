@@ -1,0 +1,25 @@
+Test_ID,Workflow,Test_Name,Ticker,Entry,ATR,K,Method,Banner,Risk,Shares,Contracts,Bucket,Preset,Delta,MaxLoss,Expected_Result,Gate1,Gate2,Gate3,Gate4,Gate5,Notes
+1.1,Position Sizing,Stock Sizing Default,AAPL,180,1.5,2,stock,,,,,,,,,Risk=$75 Stop=3 Shares=25,,,,,,"Default settings: E=$10k r=0.75%"
+1.2,Position Sizing,Stock Sizing Overrides,MSFT,400,3.0,2,stock,,,,,,,,,Risk=$200 Stop=6 Shares=33,,,,,,"Override: E=$20k r=1.0%"
+1.3,Position Sizing,Option Delta-ATR,NVDA,500,5.0,2,opt-delta-atr,,,,,,0.30,,Contracts=25,,,,,,"Delta method"
+1.4,Position Sizing,Option Max-Loss,SPY,450,,,,opt-maxloss,,,,,,70,Contracts=1,,,,,,"MaxLoss < Risk"
+2.1,Checklist,GREEN Banner,AAPL,,,,,GREEN,,,,,,,,Banner=GREEN Allow=TRUE,PASS,,,,,All 6 boxes checked
+2.2,Checklist,YELLOW Banner 2 Missing,MSFT,,,,,YELLOW,,,,,,,,Banner=YELLOW Allow=FALSE,FAIL,,,,,Boxes 5-6 unchecked
+2.3,Checklist,YELLOW Banner 1 Missing,NVDA,,,,,YELLOW,,,,,,,,Banner=YELLOW Allow=FALSE,FAIL,,,,,Box 2 unchecked
+2.4,Checklist,RED Banner 3+ Missing,SPY,,,,,RED,,,,,,,,Banner=RED Allow=FALSE,FAIL,,,,,Boxes 4-6 unchecked
+3.1,Heat Check,No Open Positions,AAPL,,,,,,75,,,Tech/Comm,,,,"Portfolio: 18.75% Bucket: 50% Allowed=TRUE",,,,,PASS,"Current heat = $0"
+3.2,Heat Check,Portfolio Cap Exceeded,AAPL,,,,,,450,,,Tech/Comm,,,,"Portfolio: 112.5% Exceeded=TRUE Allowed=FALSE",,,,,FAIL,"$450 > $400 cap"
+3.3,Heat Check,Bucket Cap Exceeded,AAPL,,,,,,200,,,Tech/Comm,,,,"Portfolio: 50% Bucket: 133% Allowed=FALSE",,,,,FAIL,"$200 > $150 bucket cap"
+3.4,Heat Check,Exactly At Cap,JPM,,,,,,150,,,Finance,,,,"Bucket: 100% Allowed=TRUE",,,,,PASS,"At cap = OK"
+3.5,Heat Check,With Open Positions,MSFT,,,,,,80,,,Tech/Comm,,,,"Current=$75 New=$155 Exceeded=TRUE",,,,,FAIL,"Cumulative with AAPL"
+3.6,Heat Check,Different Bucket,JPM,,,,,,80,,,Healthcare,,,,"Healthcare: 53% Allowed=TRUE",,,,,PASS,"Independent buckets"
+4.1,Save Decision,Happy Path All Gates Pass,AAPL,180,1.5,2,stock,GREEN,75,25,0,Tech/Comm,TEST,,,Decision ID=1 Saved=TRUE,PASS,PASS,PASS,PASS,PASS,"All gates pass"
+4.2,Save Decision,Gate 1 YELLOW Banner,AAPL,180,1.5,2,stock,YELLOW,75,25,0,Tech/Comm,TEST,,,REJECTED: Banner must be GREEN,FAIL,PASS,PASS,PASS,PASS,"Only GREEN allowed"
+4.3,Save Decision,Gate 1 RED Banner,AAPL,180,1.5,2,stock,RED,75,25,0,Tech/Comm,TEST,,,REJECTED: Banner must be GREEN,FAIL,PASS,PASS,PASS,PASS,"RED also rejected"
+4.4,Save Decision,Gate 2 Not In Candidates,ZZZZ,100,2.0,2,stock,GREEN,75,37,0,Tech/Comm,TEST,,,REJECTED: Not in candidates,PASS,FAIL,FAIL,PASS,PASS,"ZZZZ not imported"
+4.5,Save Decision,Gate 3 Impulse Brake Active,MSFT,400,3.0,2,stock,GREEN,75,25,0,Tech/Comm,TEST,,,REJECTED: Wait XX seconds,PASS,PASS,FAIL,PASS,PASS,"<2 min since eval"
+4.6,Save Decision,Gate 4 Bucket Cooldown,NVDA,500,5.0,2,stock,GREEN,75,15,0,Tech/Comm,TEST,,,REJECTED: Bucket in cooldown,PASS,PASS,PASS,FAIL,PASS,"Recent Tech/Comm trade"
+4.7,Save Decision,Gate 5 Heat Cap Portfolio,AAPL,180,1.5,2,stock,GREEN,450,150,0,Tech/Comm,TEST,,,REJECTED: Portfolio heat exceeded,PASS,PASS,PASS,PASS,FAIL,"$450 > $400 cap"
+4.8,Save Decision,Gate 5 Heat Cap Bucket,AAPL,180,1.5,2,stock,GREEN,200,66,0,Tech/Comm,TEST,,,REJECTED: Bucket heat exceeded,PASS,PASS,PASS,PASS,FAIL,"$200 > $150 bucket"
+4.9,Save Decision,Multiple Gate Failures,ZZZZ,100,2.0,2,stock,YELLOW,450,225,0,Tech/Comm,TEST,,,REJECTED: [First gate reason],FAIL,FAIL,FAIL,PASS,FAIL,"Gates 1,2,3,5 fail"
+4.10,Save Decision,Form Clears On Success,AAPL,180,1.5,2,stock,GREEN,75,25,0,Tech/Comm,TEST,,,Form cleared,PASS,PASS,PASS,PASS,PASS,"Verify inputs cleared"
