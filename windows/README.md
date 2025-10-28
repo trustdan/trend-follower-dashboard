@@ -2,15 +2,23 @@
 # Trading Engine v3
 
 **Created:** 2025-10-27 (M20 - Windows Integration Package)
-**Updated:** 2025-10-28 (M22 - Automated UI Generation)
+**Updated:** 2025-10-28 (M23 - FINVIZ Scraper + Cookie Jar Fix)
 **Purpose:** Complete Windows deployment and testing package
-**Status:** Production Ready
+**Status:** Production Ready ✅
+
+## What's New in M23
+
+- ✅ **FINVIZ Scraper Working** - Fixed with cookie jar and session management
+- ✅ **Interactive Mode** - Beautiful ASCII art, progress bars, emojis
+- ✅ **Your Trading Presets** - TF-Breakout-Long, TF-Momentum-Uptrend, etc.
+- ✅ **One-Click Import** - `import-candidates.bat` for daily candidate import
+- ✅ **Simplified Folders** - Single `/windows/` folder for development
 
 ---
 
 ## Quick Start (3 Minutes)
 
-### One-Command Setup (Recommended - M22+)
+### Step 1: Setup (One-Time)
 
 1. **Copy to Windows**
    - Copy entire `windows/` folder to Windows PC
@@ -22,7 +30,7 @@
    1-setup-all.bat
    ```
 
-3. **That's it!** The script will:
+3. **Setup Complete!** The script will:
    - Create Excel workbook (TradingPlatform.xlsm)
    - Enable VBA project access
    - Import all VBA modules
@@ -30,11 +38,40 @@
    - Initialize database (trading.db)
    - Run automated smoke tests
 
-4. **Open and Use**
+### Step 2: Daily Candidate Import
+
+**Import today's trading candidates from FINVIZ:**
+
+```cmd
+# Interactive mode (recommended)
+import-candidates.bat
+
+# Or auto mode (no prompts)
+import-candidates-auto.bat
+```
+
+**What you'll see:**
+- 🎨 Beautiful ASCII art banner
+- 📊 Interactive preset selection (TF-Breakout-Long, TF-Momentum-Uptrend, etc.)
+- ⚡ Progress bars and animations
+- 💰 Ticker list preview
+- ✅ Success confirmation with stats
+
+### Step 3: Trade Using Excel
+
+1. **Open Excel**
    - Open `TradingPlatform.xlsm`
    - Enable macros when prompted
-   - Start with the Dashboard worksheet
-   - Navigate to other worksheets using Dashboard buttons
+
+2. **Check Dashboard**
+   - View today's imported candidates
+   - See heat check status
+   - Review active positions
+
+3. **Evaluate Trades**
+   - Use Trade Entry sheet for new positions
+   - System enforces 5 Hard Gates
+   - Only trade tickers from today's candidates
 
 ### Manual Setup (Legacy - M20)
 
@@ -46,37 +83,51 @@ For step-by-step manual setup, see "Legacy Setup Process" section below.
 
 ```
 windows/
-├── tf-engine.exe                   - Go backend (12 MB Windows binary)
-├── 1-setup-all.bat                 - ⭐ ONE-CLICK COMPLETE SETUP (M22)
-├── 2-update-vba.bat                - Update VBA modules only
-├── 3-run-integration-tests.bat     - Run integration test suite
-├── 4-run-tests.bat                 - Run all automated tests
-├── create-ui-worksheets.vbs        - UI worksheet generator (M22)
-├── vbscript-lib.vbs                - VBScript helper library (M22)
-├── windows-import-vba.bat          - [DEPRECATED] VBA import (use 1-setup-all.bat)
-├── windows-init-database.bat       - [DEPRECATED] DB init (use 1-setup-all.bat)
-├── README.md                       - This file
-├── WINDOWS_TESTING.md              - Comprehensive testing guide
-├── EXCEL_WORKBOOK_TEMPLATE.md      - Workbook structure specification
-└── test-data/
-    ├── README.txt                  - Test data description
-    └── *.json                      - 21 sample JSON response files
+├── tf-engine.exe                      - Go backend (32 MB Windows binary)
+│
+├── 🚀 One-Click Launchers (M23)
+│   ├── import-candidates.bat          - ⭐ INTERACTIVE candidate import
+│   └── import-candidates-auto.bat     - Auto mode (no prompts)
+│
+├── 🔧 Setup & Testing (M22)
+│   ├── 1-setup-all.bat                - ⭐ ONE-CLICK COMPLETE SETUP
+│   ├── 2-update-vba.bat               - Update VBA modules only
+│   ├── 3-run-integration-tests.bat    - Run integration test suite
+│   └── 4-run-tests.bat                - Run all automated tests
+│
+├── 📜 VBScript Tools
+│   ├── create-workbook-manual-ui.vbs  - Complete workbook generator (M22)
+│   ├── create-ui-worksheets.vbs       - UI worksheet generator (legacy)
+│   └── vbscript-lib.vbs               - VBScript helper library
+│
+├── 📚 Documentation
+│   ├── README.md                      - This file
+│   ├── QUICK_START.md                 - Fast setup guide
+│   ├── SETUP_WORKFLOW.md              - Numbered batch file workflow
+│   ├── INTERACTIVE_MODE_GUIDE.md      - Interactive import guide
+│   ├── VISUAL_GUIDE.md                - ASCII art & visual features
+│   ├── README_UI_FIX.md               - OLE checkbox fix details
+│   ├── README_TESTING.md              - Testing procedures
+│   ├── WINDOWS_TESTING.md             - Windows-specific tests
+│   └── EXCEL_WORKBOOK_TEMPLATE.md     - Workbook structure
+│
+└── test-data/                         - 21 sample JSON response files
 ```
 
-### Additional Files (in parent directories)
+### VBA Modules (in /excel/vba/)
 ```
-../excel/vba/
-├── TFTypes.bas                     - Type definitions
-├── TFHelpers.bas                   - JSON parsing & utilities
-├── TFEngine.bas                    - Engine communication
-└── TFTests.bas                     - VBA unit tests
+excel/vba/
+├── TFTypes.bas                        - Type definitions
+├── TFHelpers.bas                      - JSON parsing & utilities
+├── TFEngine.bas                       - Engine communication
+└── TFTests.bas                        - VBA unit tests
 ```
 
 ---
 
 ## File Descriptions
 
-### tf-engine.exe (12 MB)
+### tf-engine.exe (32 MB)
 **Purpose:** Go backend - all business logic and 5 hard gates enforcement
 
 **Capabilities:**
@@ -89,16 +140,24 @@ windows/
 - Save decision with 5 hard gate enforcement
 - Position tracking
 - Settings management
-- FINVIZ scraper integration
+- **FINVIZ scraper with cookie jar** (M23)
+- **Interactive mode with ASCII art** (M23)
 
 **Usage:**
 ```cmd
+# Interactive candidate import (recommended)
+tf-engine.exe interactive
+
+# Or use standard CLI commands
 tf-engine.exe --help
 tf-engine.exe --version
 tf-engine.exe init
 tf-engine.exe size --entry 180 --atr 1.5 --k 2 --method stock
 tf-engine.exe checklist --ticker AAPL --checks true,true,true,true,true,true
 tf-engine.exe heat --add-r 75 --bucket "Tech/Comm"
+
+# Direct FINVIZ scraping
+tf-engine.exe scrape-finviz --query "https://finviz.com/..." --max-pages 3
 ```
 
 All commands support `--format json` for programmatic use (VBA bridge).
@@ -577,18 +636,92 @@ Excel displays: "✅ Success (corr_id: 20251027-143052-7A3F)"
 
 ---
 
-## Version Information
+## For Developers
 
-**Package:** M20 - Windows Integration Package
-**Created:** 2025-10-27
-**Binary:** tf-engine.exe version 3.0.0-dev
-**VBA Modules:** M19 (2025-10-27)
-**Target:** Windows 10/11 with Excel desktop
-**Status:** ✅ Ready for M21 testing
+### Folder Structure
+
+```
+/home/kali/excel-trading-platform/
+│
+├── windows/                          ← 🎯 PRIMARY DEVELOPMENT FOLDER
+│   ├── tf-engine.exe                 ← Built here first
+│   ├── *.bat, *.vbs, *.md            ← All active development files
+│   └── test-data/
+│
+├── release/TradingEngine-v3/         ← 📦 DISTRIBUTION PACKAGE
+│   ├── tf-engine.exe                 ← Copied from windows/
+│   ├── *.bat, *.md                   ← Copied from windows/
+│   ├── docs/                         ← Release documentation
+│   └── excel/                        ← VBA modules
+│
+├── internal/                         ← Go source code
+│   ├── cli/                          ← CLI commands
+│   │   ├── interactive.go            ← Interactive mode (M23)
+│   │   └── scrape.go                 ← FINVIZ scraper
+│   ├── scrape/
+│   │   └── finviz.go                 ← Cookie jar implementation (M23)
+│   └── ...
+│
+└── cmd/tf-engine/                    ← Main entry point
+    └── main.go
+```
+
+### Building
+
+**Quick Build:**
+```bash
+./build-windows.sh
+```
+
+This script:
+1. Builds `tf-engine.exe` to `/windows/`
+2. Copies to `/release/TradingEngine-v3/`
+3. Syncs all batch files and documentation
+
+**Manual Build:**
+```bash
+CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+  go build -o windows/tf-engine.exe ./cmd/tf-engine
+```
+
+### Key Implementation Details (M23)
+
+**FINVIZ Scraper Fix:**
+- Added `net/http/cookiejar` for session cookies
+- Visit finviz.com homepage first to establish session
+- Set proper browser headers (User-Agent, Referer, etc.)
+- Fixed: Was getting 25KB bot-detection page, now gets full 177KB HTML
+
+**Interactive Mode:**
+- Uses `github.com/manifoldco/promptui` for menus
+- ASCII art from `/art/tf-engine_exe-ASCII.txt`
+- Progress bars: `[■■■■■■░░░░]` animation
+- Spinner: `⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏` characters
+- Emojis: 📊 📈 💰 ✅ ❌ ⚠️ 💡 🚀
+
+**Trading Presets:**
+See `internal/cli/interactive.go` lines 163-170 for preset URLs.
 
 ---
 
-**This package contains everything needed to test VBA ↔ Go engine integration on Windows.**
+## Version Information
+
+**Package:** M23 - FINVIZ Scraper + Cookie Jar Fix
+**Created:** 2025-10-27
+**Updated:** 2025-10-28
+**Binary:** tf-engine.exe version 3.0.0-dev (32 MB)
+**VBA Modules:** M19 (2025-10-27)
+**Target:** Windows 10/11 with Excel desktop
+**Status:** ✅ Production Ready
+
+**Changelog:**
+- **M23 (2025-10-28):** FINVIZ scraper working, interactive mode, cookie jar fix
+- **M22 (2025-10-28):** Automated UI generation, consolidated setup
+- **M20 (2025-10-27):** Initial Windows integration package
+
+---
+
+**This package contains everything needed for professional trend-following trading.**
 
 **Remember:** This is a discipline enforcement system. Testing must be thorough. No shortcuts.
 
