@@ -182,6 +182,11 @@ env/
 
 # VBA import temporary files
 import_vba.vbs
+create_workbook.vbs
+configure_excel.vbs
+
+# Setup logs
+setup-all.log
 
 # Test data that's generated (not the fixtures)
 /test-data/generated/

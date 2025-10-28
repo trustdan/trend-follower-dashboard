@@ -88,7 +88,7 @@ Public Sub RunAllTests()
 End Sub
 
 ' AddTestResult adds a test result to the results array
-Private Sub AddTestResult(ByRef results() As TestResult, ByRef count As Long, ByVal result As TestResult)
+Private Sub AddTestResult(ByRef results() As TestResult, ByRef count As Long, ByRef result As TestResult)
     ReDim Preserve results(0 To count)
     results(count) = result
     count = count + 1
@@ -125,7 +125,7 @@ Private Function Test_ParseSizingJSON() As TestResult
               "}"
 
     ' Parse
-    sizeResult = TFHelpers.ParseSizingJSON(jsonStr)
+    TFHelpers.ParseSizingJSON jsonStr, sizeResult
 
     ' Verify
     If sizeResult.RiskDollars <> 75 Then GoTo FailTest
@@ -174,7 +174,7 @@ Private Function Test_ParseChecklistJSON_Green() As TestResult
               "  ""allow_save"": true" & vbCrLf & _
               "}"
 
-    checkResult = TFHelpers.ParseChecklistJSON(jsonStr)
+    TFHelpers.ParseChecklistJSON jsonStr, checkResult
 
     If checkResult.Banner <> "GREEN" Then GoTo FailTest
     If checkResult.MissingCount <> 0 Then GoTo FailTest
@@ -220,7 +220,7 @@ Private Function Test_ParseChecklistJSON_Yellow() As TestResult
               "  ""allow_save"": false" & vbCrLf & _
               "}"
 
-    checkResult = TFHelpers.ParseChecklistJSON(jsonStr)
+    TFHelpers.ParseChecklistJSON jsonStr, checkResult
 
     If checkResult.Banner <> "YELLOW" Then GoTo FailTest
     If checkResult.MissingCount <> 1 Then GoTo FailTest
@@ -275,7 +275,7 @@ Private Function Test_ParseHeatJSON() As TestResult
               "  ""allowed"": true" & vbCrLf & _
               "}"
 
-    heatResult = TFHelpers.ParseHeatJSON(jsonStr)
+    TFHelpers.ParseHeatJSON jsonStr, heatResult
 
     If heatResult.NewPortfolioHeat <> 75 Then GoTo FailTest
     If heatResult.PortfolioCap <> 400 Then GoTo FailTest
@@ -323,7 +323,7 @@ Private Function Test_ParseTimerJSON() As TestResult
               "  ""timer_active"": true" & vbCrLf & _
               "}"
 
-    timerResult = TFHelpers.ParseTimerJSON(jsonStr)
+    TFHelpers.ParseTimerJSON jsonStr, timerResult
 
     If Not timerResult.TimerActive Then GoTo FailTest
     If timerResult.BrakeCleared Then GoTo FailTest
@@ -370,7 +370,7 @@ Private Function Test_ParseSettingsJSON() As TestResult
               "  ""StopMultiple_K"": ""2""" & vbCrLf & _
               "}"
 
-    settings = TFHelpers.ParseSettingsJSON(jsonStr)
+    TFHelpers.ParseSettingsJSON jsonStr, settings
 
     If settings.Equity_E <> 10000 Then GoTo FailTest
     If settings.RiskPct_r <> 0.0075 Then GoTo FailTest
@@ -496,10 +496,11 @@ Private Function Test_GenerateCorrelationID() As TestResult
 
     corrID = TFHelpers.GenerateCorrelationID()
 
-    ' Should be format: YYYYMMDD-HHMMSS-XXXX (23 chars)
+    ' Should be format: YYYYMMDD-HHMMSSFFF-XXXX (23 chars)
+    ' Position 9: first dash, Position 19: second dash
     If Len(corrID) <> 23 Then GoTo FailTest
     If Mid(corrID, 9, 1) <> "-" Then GoTo FailTest
-    If Mid(corrID, 16, 1) <> "-" Then GoTo FailTest
+    If Mid(corrID, 19, 1) <> "-" Then GoTo FailTest
 
     result.Passed = True
     result.Message = "Correlation ID format correct: " & corrID
@@ -695,7 +696,7 @@ Private Function Test_ShellExecution() As TestResult
     ' Check if execution worked
     If cmdResult.ExitCode <> 0 Then
         result.Passed = False
-        result.Message = "Engine not found or failed (exit code " & cmdResult.ExitCode & ")"
+        result.Message = "Exit code " & cmdResult.ExitCode & ": " & Left(cmdResult.ErrorOutput, 50)
         result.Duration = Timer - startTime
         Test_ShellExecution = result
         Exit Function
@@ -747,7 +748,7 @@ Private Sub WriteTestHeader(ByVal header As String)
 End Sub
 
 ' WriteTestResult writes a single test result to worksheet
-Private Sub WriteTestResult(ByVal result As TestResult)
+Private Sub WriteTestResult(ByRef result As TestResult)
     On Error Resume Next
     Dim ws As Worksheet
     Dim nextRow As Long
@@ -766,10 +767,10 @@ Private Sub WriteTestResult(ByVal result As TestResult)
     ' Color code
     If result.Passed Then
         ws.Cells(nextRow, 2).Interior.Color = RGB(198, 239, 206)  ' Green
-        ws.Cells(nextRow, 2).Value = "✅ PASS"
+        ws.Cells(nextRow, 2).Value = "[PASS]"
     Else
         ws.Cells(nextRow, 2).Interior.Color = RGB(255, 199, 206)  ' Red
-        ws.Cells(nextRow, 2).Value = "❌ FAIL"
+        ws.Cells(nextRow, 2).Value = "[FAIL]"
     End If
 End Sub
 
@@ -820,11 +821,11 @@ Private Sub WriteTestSummary(ByVal passCount As Long, ByVal failCount As Long, _
     nextRow = nextRow + 1
     ws.Cells(nextRow, 1).Value = "Result:"
     If failCount = 0 Then
-        ws.Cells(nextRow, 2).Value = "✅ ALL TESTS PASSED"
+        ws.Cells(nextRow, 2).Value = "[ALL TESTS PASSED]"
         ws.Cells(nextRow, 2).Font.Bold = True
         ws.Cells(nextRow, 2).Interior.Color = RGB(198, 239, 206)
     Else
-        ws.Cells(nextRow, 2).Value = "❌ " & failCount & " TESTS FAILED"
+        ws.Cells(nextRow, 2).Value = "[" & failCount & " TESTS FAILED]"
         ws.Cells(nextRow, 2).Font.Bold = True
         ws.Cells(nextRow, 2).Interior.Color = RGB(255, 199, 206)
     End If

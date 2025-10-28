@@ -68,6 +68,10 @@ Public Function ExecuteCommand(ByVal command As String, Optional ByVal corrID As
     enginePath = GetEnginePath()
     dbPath = GetDatabasePath()
 
+    ' Log paths for debugging
+    TFHelpers.LogMessage corrID, "DEBUG", "Engine path: " & enginePath
+    TFHelpers.LogMessage corrID, "DEBUG", "Database path: " & dbPath
+
     ' Build full command with global flags
     ' Format: tf-engine.exe --db trading.db --corr-id <id> --format json <command>
     fullCommand = """" & enginePath & """ --db """ & dbPath & """ --corr-id " & corrID & " --format json " & command
@@ -97,8 +101,8 @@ Public Function ExecuteCommand(ByVal command As String, Optional ByVal corrID As
             GoTo Cleanup
         End If
 
-        ' Brief pause to avoid CPU spinning
-        Application.Wait Now + TimeValue("0:00:00.1")
+        ' Brief pause to avoid CPU spinning (100ms)
+        Application.Wait Now + (0.1 / 86400)  ' Add 0.1 seconds as fraction of day
     Loop
 
     ' Read stdout and stderr
@@ -151,6 +155,7 @@ Private Function GetEnginePath() As String
 
     Dim ws As Worksheet
     Dim pathRange As Range
+    Dim configPath As String
 
     ' Try to get from Setup sheet
     Set ws = ThisWorkbook.Worksheets("Setup")
@@ -158,7 +163,16 @@ Private Function GetEnginePath() As String
         Set pathRange = ws.Range("EnginePathSetting")  ' Named range
         If Not pathRange Is Nothing Then
             If pathRange.Value <> "" Then
-                GetEnginePath = pathRange.Value
+                configPath = pathRange.Value
+
+                ' If relative path (starts with .), make it absolute
+                If Left(configPath, 2) = ".\" Or Left(configPath, 2) = "./" Then
+                    GetEnginePath = ThisWorkbook.Path & Mid(configPath, 2)
+                    Exit Function
+                End If
+
+                ' If absolute path or just filename, use as-is
+                GetEnginePath = configPath
                 Exit Function
             End If
         End If
@@ -175,6 +189,7 @@ Private Function GetDatabasePath() As String
 
     Dim ws As Worksheet
     Dim pathRange As Range
+    Dim configPath As String
 
     ' Try to get from Setup sheet
     Set ws = ThisWorkbook.Worksheets("Setup")
@@ -182,7 +197,16 @@ Private Function GetDatabasePath() As String
         Set pathRange = ws.Range("DatabasePathSetting")  ' Named range
         If Not pathRange Is Nothing Then
             If pathRange.Value <> "" Then
-                GetDatabasePath = pathRange.Value
+                configPath = pathRange.Value
+
+                ' If relative path (starts with .), make it absolute
+                If Left(configPath, 2) = ".\" Or Left(configPath, 2) = "./" Then
+                    GetDatabasePath = ThisWorkbook.Path & Mid(configPath, 2)
+                    Exit Function
+                End If
+
+                ' If absolute path or just filename, use as-is
+                GetDatabasePath = configPath
                 Exit Function
             End If
         End If

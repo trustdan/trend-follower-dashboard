@@ -33,16 +33,20 @@ Private Const MAX_LOG_SIZE_KB As Long = 5120  ' 5 MB before rotation
 ' Format: YYYYMMDD-HHMMSS-RND (e.g., "20251027-143052-7A3F")
 Public Function GenerateCorrelationID() As String
     Dim timestamp As String
+    Dim milliseconds As String
     Dim randomPart As String
 
-    ' Format: YYYYMMDD-HHMMSS
+    ' Format: YYYYMMDD-HHMMSSFFF (with milliseconds)
     timestamp = Format(Now, "YYYYMMDD-HHNNSS")
+
+    ' Add 3-digit milliseconds
+    milliseconds = Right("000" & Format(Timer Mod 1 * 1000, "0"), 3)
 
     ' Add 4 random hex characters
     Randomize
-    randomPart = Right("000" & Hex(Int(Rnd * 65535)), 4)
+    randomPart = Right("0000" & Hex(Int(Rnd * 65535)), 4)
 
-    GenerateCorrelationID = timestamp & "-" & randomPart
+    GenerateCorrelationID = timestamp & milliseconds & "-" & randomPart
 End Function
 
 '-----------------------------------------------------------------------------
@@ -216,9 +220,7 @@ End Function
 '-----------------------------------------------------------------------------
 
 ' ParseSizingJSON parses position sizing JSON into TFSizingResult
-Public Function ParseSizingJSON(ByVal jsonStr As String) As TFSizingResult
-    Dim result As TFSizingResult
-
+Public Sub ParseSizingJSON(ByVal jsonStr As String, ByRef result As TFSizingResult)
     result.RiskDollars = CDbl(ExtractJSONValue(jsonStr, "risk_dollars"))
     result.StopDistance = CDbl(ExtractJSONValue(jsonStr, "stop_distance"))
     result.InitialStop = CDbl(ExtractJSONValue(jsonStr, "initial_stop"))
@@ -226,13 +228,10 @@ Public Function ParseSizingJSON(ByVal jsonStr As String) As TFSizingResult
     result.Contracts = CLng(ExtractJSONValue(jsonStr, "contracts"))
     result.ActualRisk = CDbl(ExtractJSONValue(jsonStr, "actual_risk"))
     result.Method = ExtractJSONValue(jsonStr, "method")
-
-    ParseSizingJSON = result
-End Function
+End Sub
 
 ' ParseChecklistJSON parses checklist evaluation JSON into TFChecklistResult
-Public Function ParseChecklistJSON(ByVal jsonStr As String) As TFChecklistResult
-    Dim result As TFChecklistResult
+Public Sub ParseChecklistJSON(ByVal jsonStr As String, ByRef result As TFChecklistResult)
     Dim missingArray As Collection
     Dim missingStr As String
     Dim item As Variant
@@ -258,14 +257,10 @@ Public Function ParseChecklistJSON(ByVal jsonStr As String) As TFChecklistResult
         missingStr = missingStr & item
     Next item
     result.MissingItems = missingStr
-
-    ParseChecklistJSON = result
-End Function
+End Sub
 
 ' ParseHeatJSON parses heat check JSON into TFHeatResult
-Public Function ParseHeatJSON(ByVal jsonStr As String) As TFHeatResult
-    Dim result As TFHeatResult
-
+Public Sub ParseHeatJSON(ByVal jsonStr As String, ByRef result As TFHeatResult)
     result.CurrentPortfolioHeat = CDbl(ExtractJSONValue(jsonStr, "current_portfolio_heat"))
     result.NewPortfolioHeat = CDbl(ExtractJSONValue(jsonStr, "new_portfolio_heat"))
     result.PortfolioHeatPct = CDbl(ExtractJSONValue(jsonStr, "portfolio_heat_pct"))
@@ -281,65 +276,45 @@ Public Function ParseHeatJSON(ByVal jsonStr As String) As TFHeatResult
     result.BucketOverage = CDbl(ExtractJSONValue(jsonStr, "bucket_overage"))
 
     result.Allowed = (LCase(ExtractJSONValue(jsonStr, "allowed")) = "true")
-
-    ParseHeatJSON = result
-End Function
+End Sub
 
 ' ParseTimerJSON parses impulse timer JSON into TFTimerResult
-Public Function ParseTimerJSON(ByVal jsonStr As String) As TFTimerResult
-    Dim result As TFTimerResult
-
+Public Sub ParseTimerJSON(ByVal jsonStr As String, ByRef result As TFTimerResult)
     result.TimerActive = (LCase(ExtractJSONValue(jsonStr, "timer_active")) = "true")
     result.BrakeCleared = (LCase(ExtractJSONValue(jsonStr, "brake_cleared")) = "true")
     result.ElapsedSeconds = CLng(ExtractJSONValue(jsonStr, "elapsed_seconds"))
     result.RemainingSeconds = CLng(ExtractJSONValue(jsonStr, "remaining_seconds"))
     result.StartedAt = ExtractJSONValue(jsonStr, "started_at")
     result.Ticker = ExtractJSONValue(jsonStr, "ticker")
-
-    ParseTimerJSON = result
-End Function
+End Sub
 
 ' ParseCandidateCheckJSON parses candidate check JSON into TFCandidateCheck
-Public Function ParseCandidateCheckJSON(ByVal jsonStr As String) As TFCandidateCheck
-    Dim result As TFCandidateCheck
-
+Public Sub ParseCandidateCheckJSON(ByVal jsonStr As String, ByRef result As TFCandidateCheck)
     result.Found = (LCase(ExtractJSONValue(jsonStr, "found")) = "true")
     result.Ticker = ExtractJSONValue(jsonStr, "ticker")
     result.DateStr = ExtractJSONValue(jsonStr, "date")
     result.Message = ExtractJSONValue(jsonStr, "message")
-
-    ParseCandidateCheckJSON = result
-End Function
+End Sub
 
 ' ParseCooldownCheckJSON parses cooldown check JSON into TFCooldownCheck
-Public Function ParseCooldownCheckJSON(ByVal jsonStr As String) As TFCooldownCheck
-    Dim result As TFCooldownCheck
-
+Public Sub ParseCooldownCheckJSON(ByVal jsonStr As String, ByRef result As TFCooldownCheck)
     result.OnCooldown = (LCase(ExtractJSONValue(jsonStr, "on_cooldown")) = "true")
     result.Bucket = ExtractJSONValue(jsonStr, "bucket")
     result.ClearsAt = ExtractJSONValue(jsonStr, "clears_at")
     result.Message = ExtractJSONValue(jsonStr, "message")
-
-    ParseCooldownCheckJSON = result
-End Function
+End Sub
 
 ' ParseSettingsJSON parses settings JSON into TFSettings
-Public Function ParseSettingsJSON(ByVal jsonStr As String) As TFSettings
-    Dim result As TFSettings
-
+Public Sub ParseSettingsJSON(ByVal jsonStr As String, ByRef result As TFSettings)
     result.Equity_E = CDbl(ExtractJSONValue(jsonStr, "Equity_E"))
     result.RiskPct_r = CDbl(ExtractJSONValue(jsonStr, "RiskPct_r"))
     result.HeatCap_H_pct = CDbl(ExtractJSONValue(jsonStr, "HeatCap_H_pct"))
     result.BucketHeatCap_pct = CDbl(ExtractJSONValue(jsonStr, "BucketHeatCap_pct"))
     result.StopMultiple_K = CLng(ExtractJSONValue(jsonStr, "StopMultiple_K"))
-
-    ParseSettingsJSON = result
-End Function
+End Sub
 
 ' ParseSaveDecisionJSON parses save-decision JSON into TFSaveDecisionResult
-Public Function ParseSaveDecisionJSON(ByVal jsonStr As String) As TFSaveDecisionResult
-    Dim result As TFSaveDecisionResult
-
+Public Sub ParseSaveDecisionJSON(ByVal jsonStr As String, ByRef result As TFSaveDecisionResult)
     result.Accepted = (LCase(ExtractJSONValue(jsonStr, "accepted")) = "true")
 
     Dim decisionIDStr As String
@@ -353,28 +328,22 @@ Public Function ParseSaveDecisionJSON(ByVal jsonStr As String) As TFSaveDecision
     result.Timestamp = ExtractJSONValue(jsonStr, "timestamp")
     result.Reason = ExtractJSONValue(jsonStr, "reason")
     result.GatesFailed = ExtractJSONValue(jsonStr, "gates_failed")
-
-    ParseSaveDecisionJSON = result
-End Function
+End Sub
 
 '-----------------------------------------------------------------------------
 ' ERROR HANDLING
 '-----------------------------------------------------------------------------
 
 ' CreateError creates a TFEngineError from command result
-Public Function CreateError(ByVal corrID As String, ByVal errorMsg As String, ByVal exitCode As Long) As TFEngineError
-    Dim result As TFEngineError
-
+Public Sub CreateError(ByVal corrID As String, ByVal errorMsg As String, ByVal exitCode As Long, ByRef result As TFEngineError)
     result.HasError = True
     result.ErrorMessage = errorMsg
     result.CorrelationID = corrID
     result.ExitCode = exitCode
-
-    CreateError = result
-End Function
+End Sub
 
 ' FormatErrorMessage formats an error message for display in Excel
-Public Function FormatErrorMessage(ByVal err As TFEngineError) As String
+Public Function FormatErrorMessage(ByRef err As TFEngineError) As String
     If Not err.HasError Then
         FormatErrorMessage = ""
         Exit Function
