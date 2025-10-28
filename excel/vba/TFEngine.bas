@@ -716,3 +716,532 @@ End Function
 ' 4. Verify correlation IDs appear in both VBA and Go logs
 '
 '=============================================================================
+
+'-----------------------------------------------------------------------------
+' UI BUTTON HANDLERS (M22 - Automated UI Generation)
+'-----------------------------------------------------------------------------
+
+' CalculatePositionSize - Position Sizing worksheet button handler
+Public Sub CalculatePositionSize()
+    On Error GoTo ErrorHandler
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Position Sizing")
+
+    ' Generate correlation ID
+    Dim corrID As String
+    corrID = TFHelpers.GenerateCorrelationID()
+
+    ' Read inputs
+    Dim ticker As String, entryPrice As Double, atr As Double
+    Dim kMultiple As Double, method As String
+    Dim equityOverride As Variant, riskPctOverride As Variant
+    Dim delta As Variant, maxLoss As Variant
+
+    ticker = ws.Range("B4").Value
+    entryPrice = ws.Range("B5").Value
+    atr = ws.Range("B6").Value
+    kMultiple = ws.Range("B7").Value
+    method = ws.Range("B8").Value
+
+    ' Optional fields
+    equityOverride = ws.Range("B9").Value
+    riskPctOverride = ws.Range("B10").Value
+    delta = ws.Range("B11").Value
+    maxLoss = ws.Range("B12").Value
+
+    ' Validate required inputs
+    If ticker = "" Or entryPrice <= 0 Or atr <= 0 Or kMultiple <= 0 Or method = "" Then
+        ws.Range("B22").Value = "❌ Missing required inputs"
+        MsgBox "Please fill in all required fields: Ticker, Entry Price, ATR, K Multiple, Method", vbExclamation, "Missing Inputs"
+        Exit Sub
+    End If
+
+    ' Build command
+    Dim cmd As String
+    cmd = "size --entry " & entryPrice & " --atr " & atr & " --k " & kMultiple & " --method " & method
+
+    ' Add optional parameters
+    If Not IsEmpty(equityOverride) And equityOverride <> "" Then
+        cmd = cmd & " --equity " & equityOverride
+    End If
+    If Not IsEmpty(riskPctOverride) And riskPctOverride <> "" Then
+        cmd = cmd & " --risk-pct " & (riskPctOverride * 100)  ' Convert to percentage
+    End If
+    If Not IsEmpty(delta) And delta <> "" Then
+        cmd = cmd & " --delta " & delta
+    End If
+    If Not IsEmpty(maxLoss) And maxLoss <> "" Then
+        cmd = cmd & " --max-loss " & maxLoss
+    End If
+
+    ' Execute command
+    Dim result As TFCommandResult
+    result = ExecuteCommand(cmd, corrID)
+
+    If result.Success Then
+        ' Parse results
+        Dim sizeResult As TFSizingResult
+        sizeResult = TFHelpers.ParseSizingJSON(result.JsonOutput)
+
+        ' Display results
+        ws.Range("B16").Value = sizeResult.RiskDollars
+        ws.Range("B17").Value = sizeResult.StopDistance
+        ws.Range("B18").Value = sizeResult.InitialStop
+        ws.Range("B19").Value = sizeResult.Shares
+        ws.Range("B20").Value = sizeResult.Contracts
+        ws.Range("B21").Value = sizeResult.ActualRisk
+        ws.Range("B22").Value = "✅ Success (" & corrID & ")"
+        ws.Range("B22").Font.Color = RGB(0, 128, 0)
+    Else
+        ws.Range("B22").Value = "❌ " & result.ErrorOutput
+        ws.Range("B22").Font.Color = RGB(255, 0, 0)
+        MsgBox "Position sizing failed:" & vbCrLf & result.ErrorOutput & vbCrLf & vbCrLf & _
+               "Correlation ID: " & corrID, vbCritical, "Error"
+    End If
+
+    Exit Sub
+
+ErrorHandler:
+    ws.Range("B22").Value = "❌ Error: " & Err.Description
+    ws.Range("B22").Font.Color = RGB(255, 0, 0)
+    MsgBox "Error in position sizing: " & Err.Description & vbCrLf & _
+           "Correlation ID: " & corrID, vbCritical, "Error"
+    TFHelpers.LogMessage corrID, "ERROR", "CalculatePositionSize failed: " & Err.Description
+End Sub
+
+' ClearPositionSizing - Clear Position Sizing worksheet inputs/results
+Public Sub ClearPositionSizing()
+    On Error Resume Next
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Position Sizing")
+
+    ' Clear inputs
+    ws.Range("B4:B12").ClearContents
+
+    ' Clear results
+    ws.Range("B16:B22").ClearContents
+    ws.Range("B22").Font.Color = RGB(0, 0, 0)
+End Sub
+
+' EvaluateChecklist - Checklist worksheet button handler
+Public Sub EvaluateChecklist()
+    On Error GoTo ErrorHandler
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Checklist")
+
+    ' Generate correlation ID
+    Dim corrID As String
+    corrID = TFHelpers.GenerateCorrelationID()
+
+    ' Read ticker
+    Dim ticker As String
+    ticker = ws.Range("B3").Value
+
+    If ticker = "" Then
+        ws.Range("B23").Value = "❌ Ticker required"
+        MsgBox "Please enter a ticker symbol", vbExclamation, "Missing Ticker"
+        Exit Sub
+    End If
+
+    ' Read checkbox states
+    Dim fromPreset As Boolean, trendPass As Boolean, liquidityPass As Boolean
+    Dim tvConfirm As Boolean, earningsOk As Boolean, journalOk As Boolean
+
+    fromPreset = ws.OLEObjects("chk_from_preset").Object.Value
+    trendPass = ws.OLEObjects("chk_trend_pass").Object.Value
+    liquidityPass = ws.OLEObjects("chk_liquidity_pass").Object.Value
+    tvConfirm = ws.OLEObjects("chk_tv_confirm").Object.Value
+    earningsOk = ws.OLEObjects("chk_earnings_ok").Object.Value
+    journalOk = ws.OLEObjects("chk_journal_ok").Object.Value
+
+    ' Build command
+    Dim cmd As String
+    cmd = "checklist --ticker " & ticker
+
+    If fromPreset Then cmd = cmd & " --from-preset"
+    If trendPass Then cmd = cmd & " --trend-pass"
+    If liquidityPass Then cmd = cmd & " --liquidity-pass"
+    If tvConfirm Then cmd = cmd & " --tv-confirm"
+    If earningsOk Then cmd = cmd & " --earnings-ok"
+    If journalOk Then cmd = cmd & " --journal-ok"
+
+    ' Execute command
+    Dim result As TFCommandResult
+    result = ExecuteCommand(cmd, corrID)
+
+    If result.Success Then
+        ' Parse results
+        Dim checkResult As TFChecklistResult
+        checkResult = TFHelpers.ParseChecklistJSON(result.JsonOutput)
+
+        ' Display results
+        ws.Range("B16").Value = checkResult.Banner
+        ws.Range("B17").Value = checkResult.MissingCount
+
+        ' Color-code banner
+        If checkResult.Banner = "GREEN" Then
+            ws.Range("B16").Interior.Color = RGB(0, 255, 0)
+            ws.Range("B16").Font.Color = RGB(0, 0, 0)
+        ElseIf checkResult.Banner = "YELLOW" Then
+            ws.Range("B16").Interior.Color = RGB(255, 255, 0)
+            ws.Range("B16").Font.Color = RGB(0, 0, 0)
+        Else ' RED
+            ws.Range("B16").Interior.Color = RGB(255, 0, 0)
+            ws.Range("B16").Font.Color = RGB(255, 255, 255)
+        End If
+
+        ' Show missing items
+        Dim missing As String
+        missing = Join(checkResult.MissingItems, vbCrLf)
+        ws.Range("B18").Value = missing
+
+        ws.Range("B21").Value = checkResult.AllowSave
+        ws.Range("B22").Value = checkResult.EvalTime
+        ws.Range("B23").Value = "✅ Success (" & corrID & ")"
+        ws.Range("B23").Font.Color = RGB(0, 128, 0)
+    Else
+        ws.Range("B23").Value = "❌ " & result.ErrorOutput
+        ws.Range("B23").Font.Color = RGB(255, 0, 0)
+        MsgBox "Checklist evaluation failed:" & vbCrLf & result.ErrorOutput & vbCrLf & vbCrLf & _
+               "Correlation ID: " & corrID, vbCritical, "Error"
+    End If
+
+    Exit Sub
+
+ErrorHandler:
+    ws.Range("B23").Value = "❌ Error: " & Err.Description
+    ws.Range("B23").Font.Color = RGB(255, 0, 0)
+    MsgBox "Error in checklist evaluation: " & Err.Description & vbCrLf & _
+           "Correlation ID: " & corrID, vbCritical, "Error"
+    TFHelpers.LogMessage corrID, "ERROR", "EvaluateChecklist failed: " & Err.Description
+End Sub
+
+' ClearChecklist - Clear Checklist worksheet
+Public Sub ClearChecklist()
+    On Error Resume Next
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Checklist")
+
+    ' Clear ticker
+    ws.Range("B3").ClearContents
+
+    ' Uncheck all checkboxes
+    ws.OLEObjects("chk_from_preset").Object.Value = False
+    ws.OLEObjects("chk_trend_pass").Object.Value = False
+    ws.OLEObjects("chk_liquidity_pass").Object.Value = False
+    ws.OLEObjects("chk_tv_confirm").Object.Value = False
+    ws.OLEObjects("chk_earnings_ok").Object.Value = False
+    ws.OLEObjects("chk_journal_ok").Object.Value = False
+
+    ' Clear results
+    ws.Range("B16:B23").ClearContents
+    ws.Range("B16").Interior.ColorIndex = xlNone
+    ws.Range("B16").Font.Color = RGB(0, 0, 0)
+    ws.Range("B23").Font.Color = RGB(0, 0, 0)
+End Sub
+
+' CheckHeat - Heat Check worksheet button handler
+Public Sub CheckHeat()
+    On Error GoTo ErrorHandler
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Heat Check")
+
+    ' Generate correlation ID
+    Dim corrID As String
+    corrID = TFHelpers.GenerateCorrelationID()
+
+    ' Read inputs
+    Dim ticker As String, riskAmount As Double, bucket As String
+
+    ticker = ws.Range("B3").Value
+    riskAmount = ws.Range("B4").Value
+    bucket = ws.Range("B5").Value
+
+    ' Validate inputs
+    If ticker = "" Or riskAmount <= 0 Or bucket = "" Then
+        MsgBox "Please fill in all required fields: Ticker, Risk Amount, Bucket", vbExclamation, "Missing Inputs"
+        Exit Sub
+    End If
+
+    ' Build command
+    Dim cmd As String
+    cmd = "heat --ticker " & ticker & " --risk " & riskAmount & " --bucket """ & bucket & """"
+
+    ' Execute command
+    Dim result As TFCommandResult
+    result = ExecuteCommand(cmd, corrID)
+
+    If result.Success Then
+        ' Parse results
+        Dim heatResult As TFHeatResult
+        heatResult = TFHelpers.ParseHeatJSON(result.JsonOutput)
+
+        ' Display portfolio heat results
+        ws.Range("B10").Value = heatResult.PortfolioCurrentHeat
+        ws.Range("B11").Value = heatResult.PortfolioNewHeat
+        ws.Range("B12").Value = heatResult.PortfolioHeatPct
+        ws.Range("B13").Value = heatResult.PortfolioCap
+        ws.Range("B14").Value = IIf(heatResult.PortfolioExceeded, "YES", "NO")
+        ws.Range("B15").Value = heatResult.PortfolioOverage
+
+        ' Highlight exceeded caps in red
+        If heatResult.PortfolioExceeded Then
+            ws.Range("B14:B15").Font.Color = RGB(255, 0, 0)
+            ws.Range("B14:B15").Font.Bold = True
+        Else
+            ws.Range("B14:B15").Font.Color = RGB(0, 128, 0)
+            ws.Range("B14:B15").Font.Bold = False
+        End If
+
+        ' Display bucket heat results
+        ws.Range("B18").Value = heatResult.BucketCurrentHeat
+        ws.Range("B19").Value = heatResult.BucketNewHeat
+        ws.Range("B20").Value = heatResult.BucketHeatPct
+        ws.Range("B21").Value = heatResult.BucketCap
+        ws.Range("B22").Value = IIf(heatResult.BucketExceeded, "YES", "NO")
+        ws.Range("B23").Value = heatResult.BucketOverage
+
+        ' Highlight exceeded caps in red
+        If heatResult.BucketExceeded Then
+            ws.Range("B22:B23").Font.Color = RGB(255, 0, 0)
+            ws.Range("B22:B23").Font.Bold = True
+        Else
+            ws.Range("B22:B23").Font.Color = RGB(0, 128, 0)
+            ws.Range("B22:B23").Font.Bold = False
+        End If
+
+        MsgBox "Heat check complete!" & vbCrLf & "Correlation ID: " & corrID, vbInformation, "Heat Check"
+    Else
+        MsgBox "Heat check failed:" & vbCrLf & result.ErrorOutput & vbCrLf & vbCrLf & _
+               "Correlation ID: " & corrID, vbCritical, "Error"
+    End If
+
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "Error in heat check: " & Err.Description & vbCrLf & _
+           "Correlation ID: " & corrID, vbCritical, "Error"
+    TFHelpers.LogMessage corrID, "ERROR", "CheckHeat failed: " & Err.Description
+End Sub
+
+' ClearHeatCheck - Clear Heat Check worksheet
+Public Sub ClearHeatCheck()
+    On Error Resume Next
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Heat Check")
+
+    ' Clear inputs
+    ws.Range("B3:B5").ClearContents
+
+    ' Clear results
+    ws.Range("B10:B15").ClearContents
+    ws.Range("B18:B23").ClearContents
+
+    ' Reset formatting
+    ws.Range("B14:B15").Font.Color = RGB(0, 0, 0)
+    ws.Range("B14:B15").Font.Bold = False
+    ws.Range("B22:B23").Font.Color = RGB(0, 0, 0)
+    ws.Range("B22:B23").Font.Bold = False
+End Sub
+
+' SaveDecisionGO - Trade Entry worksheet - Save GO decision
+Public Sub SaveDecisionGO()
+    On Error GoTo ErrorHandler
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Trade Entry")
+
+    ' Generate correlation ID
+    Dim corrID As String
+    corrID = TFHelpers.GenerateCorrelationID()
+
+    ' Read inputs
+    Dim ticker As String, entryPrice As Double, atr As Double, method As String
+    Dim bannerStatus As String, delta As Variant, maxLoss As Variant
+    Dim bucket As String, preset As String
+
+    ticker = ws.Range("B4").Value
+    entryPrice = ws.Range("B5").Value
+    atr = ws.Range("B6").Value
+    method = ws.Range("B7").Value
+    bannerStatus = ws.Range("B8").Value
+    delta = ws.Range("B9").Value
+    maxLoss = ws.Range("B10").Value
+    bucket = ws.Range("B11").Value
+    preset = ws.Range("B12").Value
+
+    ' Validate required inputs
+    If ticker = "" Or entryPrice <= 0 Or atr <= 0 Or method = "" Or bucket = "" Then
+        ws.Range("B30").Value = "❌ Missing required inputs"
+        MsgBox "Please fill in all required fields", vbExclamation, "Missing Inputs"
+        Exit Sub
+    End If
+
+    ' Build command
+    Dim cmd As String
+    cmd = "save-decision --ticker " & ticker & " --entry " & entryPrice & _
+          " --atr " & atr & " --method " & method & _
+          " --bucket """ & bucket & """ --action GO"
+
+    If bannerStatus <> "" Then cmd = cmd & " --banner " & bannerStatus
+    If preset <> "" Then cmd = cmd & " --preset """ & preset & """"
+    If Not IsEmpty(delta) And delta <> "" Then cmd = cmd & " --delta " & delta
+    If Not IsEmpty(maxLoss) And maxLoss <> "" Then cmd = cmd & " --max-loss " & maxLoss
+
+    ' Execute command
+    Dim result As TFCommandResult
+    result = ExecuteCommand(cmd, corrID)
+
+    If result.Success Then
+        ' Parse results
+        Dim decisionResult As TFDecisionResult
+        decisionResult = TFHelpers.ParseDecisionJSON(result.JsonOutput)
+
+        ' Display gate results
+        ws.Range("B18").Value = FormatGateStatus(decisionResult.Gate1Pass)
+        ws.Range("B19").Value = FormatGateStatus(decisionResult.Gate2Pass)
+        ws.Range("B20").Value = FormatGateStatus(decisionResult.Gate3Pass)
+        ws.Range("B21").Value = FormatGateStatus(decisionResult.Gate4Pass)
+        ws.Range("B22").Value = FormatGateStatus(decisionResult.Gate5Pass)
+
+        ' Display decision results
+        ws.Range("B25").Value = IIf(decisionResult.DecisionSaved, "YES", "NO")
+        ws.Range("B26").Value = decisionResult.DecisionID
+        ws.Range("B27").Value = decisionResult.RejectionReason
+        ws.Range("B30").Value = "✅ Decision saved (" & corrID & ")"
+        ws.Range("B30").Font.Color = RGB(0, 128, 0)
+
+        ' Show success/rejection message
+        If decisionResult.DecisionSaved Then
+            MsgBox "Trade decision saved!" & vbCrLf & "Decision ID: " & decisionResult.DecisionID & vbCrLf & _
+                   "Correlation ID: " & corrID, vbInformation, "Success"
+            ' Clear form on success
+            Call ClearTradeEntry
+        Else
+            MsgBox "Trade rejected:" & vbCrLf & decisionResult.RejectionReason & vbCrLf & vbCrLf & _
+                   "Correlation ID: " & corrID, vbExclamation, "Trade Rejected"
+        End If
+    Else
+        ws.Range("B30").Value = "❌ " & result.ErrorOutput
+        ws.Range("B30").Font.Color = RGB(255, 0, 0)
+        MsgBox "Save decision failed:" & vbCrLf & result.ErrorOutput & vbCrLf & vbCrLf & _
+               "Correlation ID: " & corrID, vbCritical, "Error"
+    End If
+
+    Exit Sub
+
+ErrorHandler:
+    ws.Range("B30").Value = "❌ Error: " & Err.Description
+    ws.Range("B30").Font.Color = RGB(255, 0, 0)
+    MsgBox "Error saving decision: " & Err.Description & vbCrLf & _
+           "Correlation ID: " & corrID, vbCritical, "Error"
+    TFHelpers.LogMessage corrID, "ERROR", "SaveDecisionGO failed: " & Err.Description
+End Sub
+
+' SaveDecisionNOGO - Trade Entry worksheet - Save NO-GO decision
+Public Sub SaveDecisionNOGO()
+    On Error GoTo ErrorHandler
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Trade Entry")
+
+    ' Generate correlation ID
+    Dim corrID As String
+    corrID = TFHelpers.GenerateCorrelationID()
+
+    ' Read inputs
+    Dim ticker As String, bucket As String, preset As String, reason As String
+
+    ticker = ws.Range("B4").Value
+    bucket = ws.Range("B11").Value
+    preset = ws.Range("B12").Value
+
+    If ticker = "" Or bucket = "" Then
+        ws.Range("B30").Value = "❌ Ticker and Bucket required"
+        MsgBox "Please enter Ticker and Bucket", vbExclamation, "Missing Inputs"
+        Exit Sub
+    End If
+
+    ' Prompt for rejection reason
+    reason = InputBox("Enter reason for NO-GO decision:", "Rejection Reason")
+    If reason = "" Then
+        ws.Range("B30").Value = "❌ Cancelled"
+        Exit Sub
+    End If
+
+    ' Build command
+    Dim cmd As String
+    cmd = "save-decision --ticker " & ticker & _
+          " --bucket """ & bucket & """ --action NO-GO" & _
+          " --reason """ & reason & """"
+
+    If preset <> "" Then cmd = cmd & " --preset """ & preset & """"
+
+    ' Execute command
+    Dim result As TFCommandResult
+    result = ExecuteCommand(cmd, corrID)
+
+    If result.Success Then
+        ' Parse results
+        Dim decisionResult As TFDecisionResult
+        decisionResult = TFHelpers.ParseDecisionJSON(result.JsonOutput)
+
+        ' Display results
+        ws.Range("B25").Value = "YES"
+        ws.Range("B26").Value = decisionResult.DecisionID
+        ws.Range("B27").Value = reason
+        ws.Range("B30").Value = "✅ NO-GO saved (" & corrID & ")"
+        ws.Range("B30").Font.Color = RGB(0, 128, 0)
+
+        MsgBox "NO-GO decision saved!" & vbCrLf & "Decision ID: " & decisionResult.DecisionID & vbCrLf & _
+               "Correlation ID: " & corrID, vbInformation, "Success"
+
+        ' Clear form on success
+        Call ClearTradeEntry
+    Else
+        ws.Range("B30").Value = "❌ " & result.ErrorOutput
+        ws.Range("B30").Font.Color = RGB(255, 0, 0)
+        MsgBox "Save decision failed:" & vbCrLf & result.ErrorOutput & vbCrLf & vbCrLf & _
+               "Correlation ID: " & corrID, vbCritical, "Error"
+    End If
+
+    Exit Sub
+
+ErrorHandler:
+    ws.Range("B30").Value = "❌ Error: " & Err.Description
+    ws.Range("B30").Font.Color = RGB(255, 0, 0)
+    MsgBox "Error saving NO-GO decision: " & Err.Description & vbCrLf & _
+           "Correlation ID: " & corrID, vbCritical, "Error"
+    TFHelpers.LogMessage corrID, "ERROR", "SaveDecisionNOGO failed: " & Err.Description
+End Sub
+
+' ClearTradeEntry - Clear Trade Entry worksheet
+Public Sub ClearTradeEntry()
+    On Error Resume Next
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Trade Entry")
+
+    ' Clear inputs
+    ws.Range("B4:B12").ClearContents
+
+    ' Clear gate status
+    ws.Range("B18:B22").ClearContents
+
+    ' Clear results
+    ws.Range("B25:B30").ClearContents
+    ws.Range("B30").Font.Color = RGB(0, 0, 0)
+End Sub
+
+' FormatGateStatus - Helper function to format gate pass/fail status
+Private Function FormatGateStatus(ByVal passed As Boolean) As String
+    If passed Then
+        FormatGateStatus = "✅ PASS"
+    Else
+        FormatGateStatus = "❌ FAIL"
+    End If
+End Function
+
+'=============================================================================

@@ -33,11 +33,12 @@ echo This script will:
 echo   1. Create Excel workbook (TradingPlatform.xlsm)
 echo   2. Enable VBA project access
 echo   3. Import VBA modules (4 modules)
-echo   4. Initialize database (trading.db)
-echo   5. Configure Excel settings
-echo   6. Run automated tests
+echo   4. Create UI worksheets (5 production sheets)
+echo   5. Initialize database (trading.db)
+echo   6. Configure Excel settings
+echo   7. Run automated tests
 echo.
-echo Estimated time: 2-3 minutes
+echo Estimated time: 3-5 minutes
 echo.
 
 pause
@@ -47,7 +48,7 @@ REM Step 1: Check Prerequisites
 REM ============================================================================
 
 echo.
-echo [Step 1/7] Checking prerequisites...
+echo [Step 1/8] Checking prerequisites...
 echo.
 
 REM Check if tf-engine.exe exists
@@ -73,7 +74,7 @@ REM Step 2: Create Excel Workbook with VBA Access Enabled
 REM ============================================================================
 
 echo.
-echo [Step 2/7] Creating Excel workbook...
+echo [Step 2/8] Creating Excel workbook...
 echo.
 
 REM Create VBScript to create and configure Excel workbook
@@ -129,7 +130,7 @@ REM Step 3: Enable VBA Project Access via Registry
 REM ============================================================================
 
 echo.
-echo [Step 3/7] Enabling VBA project access...
+echo [Step 3/8] Enabling VBA project access...
 echo.
 
 REM This sets the registry key that enables "Trust access to VBA project object model"
@@ -146,7 +147,7 @@ REM Step 4: Import VBA Modules
 REM ============================================================================
 
 echo.
-echo [Step 4/7] Importing VBA modules...
+echo [Step 4/8] Importing VBA modules...
 echo.
 
 REM Create import script
@@ -221,11 +222,43 @@ del import_vba.vbs
 echo [OK] VBA modules imported (4 modules)
 
 REM ============================================================================
-REM Step 5: Configure Excel Named Ranges and Test Button
+REM Step 5: Create UI Worksheets (M22 - Automated UI Generation)
 REM ============================================================================
 
 echo.
-echo [Step 5/7] Configuring Excel workbook...
+echo [Step 5/8] Creating UI worksheets...
+echo.
+
+REM Check if worksheet generation script exists
+if not exist "create-ui-worksheets.vbs" (
+    echo ERROR: create-ui-worksheets.vbs not found
+    echo Please ensure the file exists in the windows\ folder
+    pause
+    exit /b 1
+)
+
+REM Execute worksheet generation script
+echo Running: cscript //nologo create-ui-worksheets.vbs TradingPlatform.xlsm >> %LOGFILE%
+cscript //nologo create-ui-worksheets.vbs TradingPlatform.xlsm >> %LOGFILE% 2>&1
+
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to create UI worksheets
+    echo ERROR: Failed to create UI worksheets. Error level: %errorlevel% >> %LOGFILE%
+    echo.
+    echo Check setup-all.log for details
+    pause
+    exit /b 1
+)
+
+echo [OK] UI worksheets created (5 production sheets)
+echo [OK] UI worksheets created: Dashboard, Position Sizing, Checklist, Heat Check, Trade Entry >> %LOGFILE%
+
+REM ============================================================================
+REM Step 6: Configure Excel Named Ranges and Test Button
+REM ============================================================================
+
+echo.
+echo [Step 6/8] Configuring Excel workbook...
 echo.
 
 REM Create configuration script
@@ -289,11 +322,11 @@ del configure_excel.vbs
 echo [OK] Excel workbook configured
 
 REM ============================================================================
-REM Step 6: Initialize Database
+REM Step 7: Initialize Database
 REM ============================================================================
 
 echo.
-echo [Step 6/7] Initializing database...
+echo [Step 7/8] Initializing database...
 echo.
 
 REM Check if database already exists
@@ -321,11 +354,11 @@ echo [OK] Database initialized
 :SkipDB
 
 REM ============================================================================
-REM Step 7: Run Smoke Tests
+REM Step 8: Run Smoke Tests
 REM ============================================================================
 
 echo.
-echo [Step 7/7] Running automated smoke tests...
+echo [Step 8/8] Running automated smoke tests...
 echo.
 
 REM Run quick smoke tests (subset of run-tests.bat)
@@ -363,17 +396,26 @@ echo  Setup Complete!
 echo ========================================
 echo.
 echo Created files:
-echo   - TradingPlatform.xlsm (Excel workbook with VBA)
+echo   - TradingPlatform.xlsm (Excel workbook with VBA and 5 UI sheets)
 echo   - trading.db (SQLite database)
 echo   - setup-all.log (setup process log)
 echo   - TradingSystem_Debug.log (will be created on first use)
 echo.
+echo Workbook contains:
+echo   - Setup (configuration)
+echo   - VBA Tests (automated testing)
+echo   - Dashboard (portfolio overview)
+echo   - Position Sizing (calculate shares/contracts)
+echo   - Checklist (6-item evaluation)
+echo   - Heat Check (portfolio/bucket heat)
+echo   - Trade Entry (5-gate decision workflow)
+echo.
 echo Next steps:
 echo   1. Open TradingPlatform.xlsm in Excel
 echo   2. Enable macros when prompted
-echo   3. Go to "VBA Tests" sheet
-echo   4. Click "Run All Tests" button
-echo   5. Verify all 14 tests pass
+echo   3. Start with Dashboard worksheet
+echo   4. Or go to "VBA Tests" sheet and click "Run All Tests"
+echo   5. Verify all tests pass
 echo.
 echo For full testing, run: run-tests.bat
 echo.

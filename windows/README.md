@@ -2,38 +2,43 @@
 # Trading Engine v3
 
 **Created:** 2025-10-27 (M20 - Windows Integration Package)
+**Updated:** 2025-10-28 (M22 - Automated UI Generation)
 **Purpose:** Complete Windows deployment and testing package
-**Status:** Ready for M21 (Windows manual testing)
+**Status:** Production Ready
 
 ---
 
-## Quick Start (5 Minutes)
+## Quick Start (3 Minutes)
 
-### Step 1: Copy to Windows
-1. Copy entire `windows/` folder to Windows PC
-2. Suggested location: `C:\trading-engine\`
+### One-Command Setup (Recommended - M22+)
 
-### Step 2: Create Excel Workbook
-1. Open Excel, create new workbook
-2. Save as: `C:\trading-engine\TradingPlatform.xlsm` (macro-enabled)
+1. **Copy to Windows**
+   - Copy entire `windows/` folder to Windows PC
+   - Suggested location: `C:\trading-engine\`
 
-### Step 3: Enable VBA Access
-1. File > Options > Trust Center > Trust Center Settings
-2. Macro Settings > ✅ "Trust access to the VBA project object model"
+2. **Run Complete Setup**
+   ```cmd
+   cd C:\trading-engine
+   1-setup-all.bat
+   ```
 
-### Step 4: Import VBA & Initialize Database
-```cmd
-cd C:\trading-engine
-windows-import-vba.bat
-windows-init-database.bat
-```
+3. **That's it!** The script will:
+   - Create Excel workbook (TradingPlatform.xlsm)
+   - Enable VBA project access
+   - Import all VBA modules
+   - Create 5 production UI worksheets
+   - Initialize database (trading.db)
+   - Run automated smoke tests
 
-### Step 5: Run Tests
-```cmd
-run-tests.bat
-```
+4. **Open and Use**
+   - Open `TradingPlatform.xlsm`
+   - Enable macros when prompted
+   - Start with the Dashboard worksheet
+   - Navigate to other worksheets using Dashboard buttons
 
-Then open Excel, run VBA tests, and complete integration tests per WINDOWS_TESTING.md
+### Manual Setup (Legacy - M20)
+
+For step-by-step manual setup, see "Legacy Setup Process" section below.
 
 ---
 
@@ -42,11 +47,16 @@ Then open Excel, run VBA tests, and complete integration tests per WINDOWS_TESTI
 ```
 windows/
 ├── tf-engine.exe                   - Go backend (12 MB Windows binary)
-├── windows-import-vba.bat          - VBA module import script
-├── windows-init-database.bat       - Database initialization script
-├── run-tests.bat                   - Automated test runner
+├── 1-setup-all.bat                 - ⭐ ONE-CLICK COMPLETE SETUP (M22)
+├── 2-update-vba.bat                - Update VBA modules only
+├── 3-run-integration-tests.bat     - Run integration test suite
+├── 4-run-tests.bat                 - Run all automated tests
+├── create-ui-worksheets.vbs        - UI worksheet generator (M22)
+├── vbscript-lib.vbs                - VBScript helper library (M22)
+├── windows-import-vba.bat          - [DEPRECATED] VBA import (use 1-setup-all.bat)
+├── windows-init-database.bat       - [DEPRECATED] DB init (use 1-setup-all.bat)
 ├── README.md                       - This file
-├── WINDOWS_TESTING.md              - Comprehensive testing guide (M21)
+├── WINDOWS_TESTING.md              - Comprehensive testing guide
 ├── EXCEL_WORKBOOK_TEMPLATE.md      - Workbook structure specification
 └── test-data/
     ├── README.txt                  - Test data description
@@ -95,8 +105,84 @@ All commands support `--format json` for programmatic use (VBA bridge).
 
 ---
 
-### windows-import-vba.bat
+### 1-setup-all.bat ⭐ (M22)
+**Purpose:** One-click complete setup - creates entire trading workbook
+
+**What it does:**
+1. ✅ Creates Excel workbook (TradingPlatform.xlsm)
+2. ✅ Enables VBA project access (registry setting)
+3. ✅ Imports all VBA modules (TFTypes, TFHelpers, TFEngine, TFTests)
+4. ✅ **Creates 5 production UI worksheets** (M22 new feature)
+5. ✅ Initializes database (trading.db)
+6. ✅ Configures named ranges
+7. ✅ Runs smoke tests
+
+**Result:** Fully functional trading workbook with:
+- **Dashboard** - Portfolio overview and navigation hub
+- **Position Sizing** - Calculate shares/contracts for trades
+- **Checklist** - 6-item entry validation with GREEN/YELLOW/RED banner
+- **Heat Check** - Portfolio and bucket heat cap verification
+- **Trade Entry** - Full 5-gate trade decision workflow
+
+**Estimated Time:** 3-5 minutes
+
+**Requirements:**
+- Excel installed on Windows
+- tf-engine.exe in current directory
+- VBA modules in ../excel/vba/
+
+---
+
+### create-ui-worksheets.vbs (M22)
+**Purpose:** Automated UI worksheet generator
+
+**What it does:**
+- Creates 5 production worksheets with complete UI
+- Adds buttons, dropdowns, checkboxes (ActiveX controls)
+- Formats cells, colors, borders
+- Sets up result display areas
+- Configures navigation between sheets
+
+**Called by:** 1-setup-all.bat (Step 5/8)
+
+**Can also run standalone:**
+```cmd
+cscript //nologo create-ui-worksheets.vbs TradingPlatform.xlsm
+```
+
+**Architecture:** Pure VBScript - no Go involvement during UI generation
+
+---
+
+### 2-update-vba.bat
+**Purpose:** Update VBA modules only (without recreating workbook)
+
+**Use when:** You've modified VBA .bas files and want to reimport them
+
+---
+
+### 3-run-integration-tests.bat
+**Purpose:** Run Phase 3 integration test suite
+
+**What it tests:** VBA → Go engine integration for all commands
+
+---
+
+### 4-run-tests.bat
+**Purpose:** Run complete automated test suite
+
+**What it tests:** CLI commands, VBA tests, integration tests
+
+---
+
+## Legacy Scripts (Deprecated)
+
+The following scripts are **deprecated** as of M22 (2025-10-28). Use `1-setup-all.bat` instead.
+
+### windows-import-vba.bat [DEPRECATED]
 **Purpose:** Import VBA modules from `.bas` files into Excel workbook
+
+**Status:** ⚠️ Deprecated - use `1-setup-all.bat` instead
 
 **Requirements:**
 - TradingPlatform.xlsm exists in current directory
@@ -116,8 +202,10 @@ All commands support `--format json` for programmatic use (VBA bridge).
 
 ---
 
-### windows-init-database.bat
+### windows-init-database.bat [DEPRECATED]
 **Purpose:** Initialize trading.db with schema and default settings
+
+**Status:** ⚠️ Deprecated - use `1-setup-all.bat` instead
 
 **What it does:**
 1. Checks if tf-engine.exe exists

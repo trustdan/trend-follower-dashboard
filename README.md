@@ -99,8 +99,8 @@ godog run features/              # BDD tests
 # Checklist evaluation
 ./tf-engine checklist --ticker AAPL --checks true,true,true,true,true,true
 
-# Heat management
-./tf-engine heat --add-r 75 --bucket "Tech/Comm"
+# Heat management (check portfolio and bucket heat)
+./tf-engine heat --risk 75 --bucket "Tech/Comm"
 
 # Save decision (enforces 5 hard gates)
 ./tf-engine save-decision --ticker AAPL --entry 180 --atr 1.5 \

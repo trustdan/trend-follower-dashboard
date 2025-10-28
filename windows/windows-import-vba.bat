@@ -2,6 +2,17 @@
 REM ===========================================================================
 REM windows-import-vba.bat - Import VBA modules into Excel workbook
 REM ===========================================================================
+REM
+REM ⚠️  DEPRECATED - This script is deprecated as of M22 (2025-10-28)
+REM ⚠️  Please use: 1-setup-all.bat instead
+REM ⚠️
+REM ⚠️  The new setup script includes VBA import plus:
+REM ⚠️  - Workbook creation
+REM ⚠️  - Database initialization
+REM ⚠️  - UI worksheet generation (5 production sheets)
+REM ⚠️  - Complete automated setup
+REM
+REM ===========================================================================
 REM Purpose: Import .bas files from ../excel/vba/ into TradingPlatform.xlsm
 REM
 REM Prerequisites:
@@ -23,6 +34,25 @@ echo ========================================
 echo  VBA Module Import Script
 echo  Trading Engine v3
 echo ========================================
+echo.
+echo ⚠️  WARNING: This script is DEPRECATED
+echo ⚠️
+echo ⚠️  Please use: 1-setup-all.bat instead
+echo ⚠️
+echo ⚠️  The new script provides:
+echo ⚠️  - Complete workbook setup
+echo ⚠️  - VBA module import
+echo ⚠️  - Database initialization
+echo ⚠️  - 5 production UI worksheets
+echo ⚠️
+echo.
+set /p continue="Do you want to continue with this deprecated script? (y/n): "
+if /i not "%continue%"=="y" (
+    echo.
+    echo Exiting. Please run: 1-setup-all.bat
+    pause
+    exit /b 0
+)
 echo.
 
 REM Check if Excel workbook exists

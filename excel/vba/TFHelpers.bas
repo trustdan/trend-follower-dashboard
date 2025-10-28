@@ -522,3 +522,63 @@ End Function
 ' 3. After error: "Engine error: [message] (exit code [code])"
 '
 '=============================================================================
+
+'-----------------------------------------------------------------------------
+' UI NAVIGATION FUNCTIONS (M22 - Automated UI Generation)
+'-----------------------------------------------------------------------------
+
+' RefreshDashboard - Updates dashboard with current portfolio data
+Public Sub RefreshDashboard()
+    On Error GoTo ErrorHandler
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Dashboard")
+
+    ' Generate correlation ID for this operation
+    Dim corrID As String
+    corrID = GenerateCorrelationID()
+
+    LogMessage corrID, "INFO", "Refreshing dashboard"
+
+    ' TODO: Query portfolio state and update cells
+    ' For now, just show refresh timestamp
+    ws.Range("A8").Value = "Last Refresh:"
+    ws.Range("B8").Value = Format(Now, "YYYY-MM-DD HH:NN:SS")
+
+    MsgBox "Dashboard refreshed!" & vbCrLf & "Correlation ID: " & corrID, vbInformation, "Dashboard"
+
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "Error refreshing dashboard: " & Err.Description & vbCrLf & _
+           "Correlation ID: " & corrID, vbCritical, "Error"
+    LogMessage corrID, "ERROR", "Dashboard refresh failed: " & Err.Description
+End Sub
+
+' Navigation helper functions - Navigate between worksheets
+Public Sub GotoPositionSizing()
+    On Error Resume Next
+    ThisWorkbook.Worksheets("Position Sizing").Activate
+End Sub
+
+Public Sub GotoChecklist()
+    On Error Resume Next
+    ThisWorkbook.Worksheets("Checklist").Activate
+End Sub
+
+Public Sub GotoHeatCheck()
+    On Error Resume Next
+    ThisWorkbook.Worksheets("Heat Check").Activate
+End Sub
+
+Public Sub GotoTradeEntry()
+    On Error Resume Next
+    ThisWorkbook.Worksheets("Trade Entry").Activate
+End Sub
+
+Public Sub GotoDashboard()
+    On Error Resume Next
+    ThisWorkbook.Worksheets("Dashboard").Activate
+End Sub
+
+'=============================================================================

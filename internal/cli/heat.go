@@ -10,27 +10,27 @@ import (
 	"github.com/yourusername/trading-engine/internal/storage"
 )
 
-// NewCheckHeatCommand creates the check-heat command
+// NewCheckHeatCommand creates the heat command
 func NewCheckHeatCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "check-heat",
+		Use:   "heat",
 		Short: "Check portfolio and bucket heat",
 		Long: `Check current portfolio heat and bucket heat status.
 
 Examples:
   # Check current heat with no new trade
-  tf-engine check-heat
+  tf-engine heat
 
   # Check heat with a proposed new trade
-  tf-engine check-heat --add-risk 75 --add-bucket "Tech/Comm"
+  tf-engine heat --risk 75 --bucket "Tech/Comm"
 
   # With JSON output
-  tf-engine check-heat --add-risk 75 --format json`,
+  tf-engine heat --risk 75 --format json`,
 		RunE: runCheckHeat,
 	}
 
-	cmd.Flags().Float64("add-risk", 0, "Risk dollars for proposed new trade")
-	cmd.Flags().String("add-bucket", "", "Bucket for proposed new trade")
+	cmd.Flags().Float64("risk", 0, "Risk dollars for proposed new trade")
+	cmd.Flags().String("bucket", "", "Bucket for proposed new trade")
 
 	return cmd
 }
@@ -41,8 +41,8 @@ func runCheckHeat(cmd *cobra.Command, args []string) error {
 	format := GetOutputFormat(cmd)
 	log := logx.WithCorrelationID(corrID)
 
-	addRisk, _ := cmd.Flags().GetFloat64("add-risk")
-	addBucket, _ := cmd.Flags().GetString("add-bucket")
+	addRisk, _ := cmd.Flags().GetFloat64("risk")
+	addBucket, _ := cmd.Flags().GetString("bucket")
 
 	log.WithFields(map[string]interface{}{
 		"add_risk":   addRisk,
