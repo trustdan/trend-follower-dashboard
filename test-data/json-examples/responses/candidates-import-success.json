@@ -1,0 +1,11 @@
+{
+  "count": 3,
+  "date": "2025-10-27",
+  "tickers": [
+    "AAPL",
+    "MSFT",
+    "NVDA"
+  ],
+  "preset": "TEST",
+  "normalized": true
+}

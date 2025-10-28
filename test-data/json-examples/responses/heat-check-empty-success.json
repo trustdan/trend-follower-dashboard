@@ -1,0 +1,15 @@
+{
+  "current_portfolio_heat": 0,
+  "new_portfolio_heat": 0,
+  "portfolio_heat_pct": 0,
+  "portfolio_cap": 400,
+  "portfolio_cap_exceeded": false,
+  "portfolio_overage": 0,
+  "current_bucket_heat": 0,
+  "new_bucket_heat": 0,
+  "bucket_heat_pct": 0,
+  "bucket_cap": 150,
+  "bucket_cap_exceeded": false,
+  "bucket_overage": 0,
+  "allowed": true
+}

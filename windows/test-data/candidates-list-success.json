@@ -1,0 +1,33 @@
+{
+  "candidates": [
+    {
+      "bucket": "",
+      "date": "2025-10-27",
+      "id": 4,
+      "preset": "TEST",
+      "preset_id": 1,
+      "sector": "",
+      "ticker": "AAPL"
+    },
+    {
+      "bucket": "",
+      "date": "2025-10-27",
+      "id": 5,
+      "preset": "TEST",
+      "preset_id": 1,
+      "sector": "",
+      "ticker": "MSFT"
+    },
+    {
+      "bucket": "",
+      "date": "2025-10-27",
+      "id": 6,
+      "preset": "TEST",
+      "preset_id": 1,
+      "sector": "",
+      "ticker": "NVDA"
+    }
+  ],
+  "count": 3,
+  "date": "2025-10-27"
+}

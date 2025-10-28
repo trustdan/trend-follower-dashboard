@@ -1,0 +1,12 @@
+{
+  "cooldowns": [
+    {
+      "bucket": "Tech/Comm",
+      "started_at": "2025-10-27T19:59:41-05:00",
+      "expires_at": "2025-10-28T20:11:16-05:00",
+      "remaining_hours": 23.999898345420835,
+      "reason": "Manual trigger"
+    }
+  ],
+  "count": 1
+}

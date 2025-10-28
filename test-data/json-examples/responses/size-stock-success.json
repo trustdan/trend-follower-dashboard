@@ -1,0 +1,9 @@
+{
+  "risk_dollars": 75,
+  "stop_distance": 3,
+  "initial_stop": 177,
+  "shares": 25,
+  "contracts": 0,
+  "actual_risk": 75,
+  "method": "stock"
+}

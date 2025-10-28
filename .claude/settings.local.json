@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//tmp/**)",
+      "Bash(timeout 3 ./tf-engine server:*)",
+      "Bash(python3:*)",
+      "Bash(pkill:*)",
+      "Bash(mkdir:*)",
+      "Bash(GOOS=windows GOARCH=amd64 go build:*)",
+      "Bash(find:*)",
+      "Bash(awk:*)",
+      "Bash(tree:*)",
+      "Bash(sudo chown:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

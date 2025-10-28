@@ -1,0 +1,10 @@
+{
+  "banner": "RED",
+  "missing_count": 2,
+  "missing_items": [
+    "EarningsOK",
+    "JournalOK"
+  ],
+  "evaluation_timestamp": "0001-01-01T00:00:00Z",
+  "allow_save": false
+}

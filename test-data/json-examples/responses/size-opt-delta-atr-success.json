@@ -1,0 +1,9 @@
+{
+  "risk_dollars": 75,
+  "stop_distance": 1,
+  "initial_stop": 4,
+  "shares": 0,
+  "contracts": 0,
+  "actual_risk": 0,
+  "method": "opt-delta-atr"
+}
