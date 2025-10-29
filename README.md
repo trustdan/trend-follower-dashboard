@@ -1,349 +1,565 @@
-# Trading Engine v3
+# TF-Engine: Fresh Start with Custom GUI
 
-**Excel-based trading platform enforcing disciplined trend-following through systematic constraints.**
+**TF = Trend Following** - Systematic Donchian breakout system following Ed Seykota/Turtle Trader principles
 
-This is not a flexible trading platform. It's a discipline enforcement system that makes impulsive trading impossible.
-
----
-
-## 🚀 Quick Start
-
-**New to the project?** Read in this order:
-1. [docs/project/WHY.md](docs/project/WHY.md) - Why this exists (5 min) ⭐ **START HERE**
-2. [docs/project/PLAN.md](docs/project/PLAN.md) - Architecture and roadmap (20 min)
-3. [docs/dev/DEVELOPMENT_PHILOSOPHY.md](docs/dev/DEVELOPMENT_PHILOSOPHY.md) - How we build (10 min)
-
-**Working with Claude Code?** Read [docs/dev/CLAUDE.md](docs/dev/CLAUDE.md)
-
-**All documentation:** See [docs/README.md](docs/README.md)
+**Created:** October 29, 2025
+**Status:** 🚀 Ready to build
+**Backend:** ✅ 100% Functional (tf-engine in Go)
+**Frontend:** 🚧 To be built (custom GUI)
 
 ---
 
-## 🎯 What This Is
+## What is This?
 
-A **discipline enforcement system** that makes bad trades impossible through:
-
-- ✅ **6-item checklist** → GREEN/YELLOW/RED banner (only GREEN allows saves)
-- ✅ **2-minute impulse brake** → Mandatory pause after evaluation
-- ✅ **Heat caps** → Portfolio (4%) and bucket (1.5%) limits enforced
-- ✅ **Candidate validation** → Only trade tickers from today's FINVIZ list
-- ✅ **Bucket cooldowns** → Sector restrictions after losses
-
-**The 5 Hard Gates:** Every trade must pass ALL gates before execution. No bypasses. No exceptions.
+This is a **fresh start** for the **TF-Engine (Trend Following Engine)** trading platform. We're building a **custom GUI application** to replace the problematic Excel/VBA frontend, while keeping the proven, tested Go backend.
 
 ---
 
-## 📁 Project Structure
+## Why the Fresh Start?
 
-```
-excel-trading-platform/
-├── README.md                  # This file
-├── docs/                      # All documentation (organized)
-│   ├── README.md              # Documentation index
-│   ├── project/               # Core project docs (WHY, PLAN)
-│   ├── dev/                   # Development guides
-│   └── milestones/            # Completion reports
-├── cmd/tf-engine/             # Go CLI entry point
-├── internal/                  # Go backend (all business logic)
-│   ├── domain/                # Position sizing, checklist, heat, gates
-│   ├── storage/               # SQLite persistence
-│   ├── api/                   # HTTP handlers
-│   └── cli/                   # CLI commands
-├── features/                  # BDD Gherkin scenarios
-├── excel/                     # VBA modules and workbook
-│   ├── vba/                   # VBA modules (.bas text files)
-│   └── VBA_MODULES_README.md  # VBA documentation
-├── windows/                   # Windows deployment package
-│   ├── tf-engine.exe          # Windows binary
-│   ├── WINDOWS_TESTING.md     # M21 testing guide
-│   └── ...                    # Setup scripts and docs
-└── test-data/                 # Test fixtures and JSON examples
-```
+The Excel/VBA frontend had fundamental integration issues:
+- Parse function signature mismatches
+- Type name and property name errors
+- OLE control compatibility problems
+- Difficult testing and deployment
+- Poor developer experience
+
+**The Go backend works perfectly.** We're just replacing the interface.
+
+See [PROJECT_HISTORY.md](PROJECT_HISTORY.md) for full details.
 
 ---
 
-## 🏗️ Architecture
+## What We Have
 
-```
-Excel UI (TradingPlatform.xlsm)
-    ↓
-VBA Bridge (thin layer - just shell exec + JSON parsing)
-    ↓
-tf-engine.exe (Go backend - ALL business logic)
-    ↓
-SQLite Database (trading.db - single source of truth)
-```
+### ✅ Reusable Components
 
-**Key Principles:**
-- **Engine-first**: All trading logic in Go backend
-- **CLI by default**: Simple, reliable shell execution
-- **HTTP optional**: Same handlers, enables future web UI
-- **Thin VBA**: No business logic in Excel
-- **Fail loudly**: Errors are never silently ignored
-
----
-
-## 🛠️ Development Commands
-
-```bash
-# Build
-go build -o tf-engine ./cmd/tf-engine
-
-# Run tests
-go test ./...                    # Unit tests
-godog run features/              # BDD tests
-
-# Position sizing example
-./tf-engine size --entry 180 --atr 1.5 --k 2 --method stock
-
-# Checklist evaluation
-./tf-engine checklist --ticker AAPL --checks true,true,true,true,true,true
-
-# Heat management (check portfolio and bucket heat)
-./tf-engine heat --risk 75 --bucket "Tech/Comm"
-
-# Save decision (enforces 5 hard gates)
-./tf-engine save-decision --ticker AAPL --entry 180 --atr 1.5 \
-  --k 2 --method stock --risk 75 --shares 25 --contracts 0 \
-  --banner GREEN --bucket "Tech/Comm" --preset TF_BREAKOUT_LONG
-
-# Initialize database
-./tf-engine init
-
-# Get settings
-./tf-engine get-settings
-
-# HTTP server (optional)
-./tf-engine server --listen 127.0.0.1:18888
-```
-
-All commands support `--format json` for programmatic use.
-
----
-
-## 📊 Current Status
-
-**Phase:** M20 Complete ✅
-**Next:** M21 - Windows Integration Validation (manual testing)
-
-**Completed Milestones:**
-- ✅ M1-M16: Go engine with all business logic
-- ✅ M17-M18: JSON contract validation (CLI + HTTP parity)
-- ✅ M19: VBA implementation (4 modules, 14 unit tests)
-- ✅ M20: Windows integration package (ready for deployment)
-
-**Next Milestone:**
-- ⏸️ M21: Windows manual testing (~45 min to 4 hours)
-
-See [docs/milestones/](docs/milestones/) for detailed completion reports.
-
----
-
-## 🧪 Testing Strategy
-
-**BDD Tests (Gherkin):**
-```bash
-godog run features/
-```
-- 50+ scenarios covering all business rules
-- Position sizing (Van Tharp method)
-- Checklist → banner logic
-- Heat management
+**Backend (Go)** - `backend/`
+- All position sizing algorithms (stock, opt-delta-atr, opt-contracts)
+- Checklist evaluation with GREEN/YELLOW/RED banners
+- Heat check calculations (portfolio and sector caps)
 - 5 hard gates enforcement
+- SQLite database with full CRUD operations
+- FINVIZ screener import
+- Comprehensive test coverage
 
-**Unit Tests:**
-```bash
-go test ./...
-```
-- Domain logic validation
-- Edge cases
-- Error handling
+**Scripts** - `scripts/`
+- `import-candidates-auto.bat` - Automated FINVIZ import
+- `import-candidates.bat` - Manual FINVIZ import
+- `build-windows.sh` - Cross-compile for Windows
+- `test-finviz-scrape.sh` - Test scraper
 
-**VBA Tests:**
-- 14 VBA unit tests in TFTests.bas
-- JSON parsing verification
-- Shell execution validation
+**Documentation** - `docs/`
+- `CLAUDE.md` - Guidance for Claude Code (future AI sessions) ⭐
+- `1._RULES.md` - Operating rules for this project (Linux-first, no Git in Linux) ⭐
+- `LLM-update.md` - Session-by-session tracking log (always current)
+- `PROGRESS.md` - Narrative progress and decisions
+- `anti-impulsivity.md` - Core design philosophy
+- `PROJECT_STATUS.md` - Current project status (M24 complete)
+- `M24_UI_IMPLEMENTATION_PLAN.md` - UI plans
+- `UI_QUICK_REFERENCE.md` - UI reference
+- Plus project docs, milestones, dev docs, JSON schemas
 
-**Integration Tests:**
-- CLI smoke tests (automated)
-- HTTP parity tests (CLI vs HTTP)
-- Windows manual tests (M21)
-
----
-
-## 📖 Key Documents
-
-### Core Philosophy
-- [docs/project/WHY.md](docs/project/WHY.md) - **Read this first** ⭐
-  - Why discipline over flexibility
-  - Psychology of impulsive trading
-  - Ed Seykota's philosophy
-  - System design rationale
-
-### Architecture & Plan
-- [docs/project/PLAN.md](docs/project/PLAN.md)
-  - Complete step-by-step plan
-  - Architecture decisions
-  - Data model
-  - Milestone breakdown (M1-M21)
-
-### Development Guides
-- [docs/dev/DEVELOPMENT_PHILOSOPHY.md](docs/dev/DEVELOPMENT_PHILOSOPHY.md)
-  - How we build this system
-  - Code quality standards
-  - Anti-patterns to reject
-- [docs/dev/BDD_GUIDE.md](docs/dev/BDD_GUIDE.md)
-  - Gherkin scenario writing
-  - Testing workflow
-- [docs/dev/CLAUDE.md](docs/dev/CLAUDE.md)
-  - Claude Code guidance for this project
-
-### Windows Deployment
-- [windows/README.md](windows/README.md) - Windows package overview
-- [windows/WINDOWS_TESTING.md](windows/WINDOWS_TESTING.md) - M21 testing guide (23 KB)
-- [windows/EXCEL_WORKBOOK_TEMPLATE.md](windows/EXCEL_WORKBOOK_TEMPLATE.md) - Workbook spec
-
-### VBA Implementation
-- [excel/VBA_MODULES_README.md](excel/VBA_MODULES_README.md) - Complete VBA documentation
-- [docs/milestones/M19_COMPLETION_SUMMARY.md](docs/milestones/M19_COMPLETION_SUMMARY.md) - M19 report
+**Test Data** - `test-data/`
+- Sample databases
+- JSON examples
+- Test scenarios
+- SQL fixtures
 
 ---
 
-## 🤝 Contributing
+## What We're Building
 
-**Before contributing:**
-1. Read [docs/project/WHY.md](docs/project/WHY.md) - Understand the purpose
-2. Read [docs/dev/DEVELOPMENT_PHILOSOPHY.md](docs/dev/DEVELOPMENT_PHILOSOPHY.md) - Understand the approach
-3. Check anti-patterns - Know what to reject
+A **native GUI application** using Go + Fyne (or similar) that:
 
-**Development workflow:**
-1. **Write Gherkin scenario first** (see [docs/dev/BDD_GUIDE.md](docs/dev/BDD_GUIDE.md))
-2. Get agreement on behavior
-3. Implement code
-4. Write tests matching Gherkin
-5. Verify behavior
+1. **Directly calls tf-engine backend** (no HTTP, no CLI spawning)
+2. **Enforces anti-impulsivity design** (large banners, 2-min cooloff, 5 gates)
+3. **Deploys as single binary** (no installation, no dependencies)
+4. **Works cross-platform** (Windows, Linux, macOS)
+5. **Has modern UX** (fast, responsive, clear feedback)
 
-**Questions to ask before adding a feature:**
-- Does this support discipline or undermine it?
-- Would Ed Seykota approve?
-- Does it make impulsivity easier or harder?
-- Is this solving a real problem or adding complexity?
+### 6 Main Screens
 
-**If unsure:** Read [docs/project/WHY.md](docs/project/WHY.md) again.
+1. **Dashboard** - Overview of positions, candidates, settings, cooldowns
+2. **Checklist** - 5 required gates + optional quality items + RED/YELLOW/GREEN banner
+3. **Position Sizing** - Calculate shares/contracts using ATR-based risk
+4. **Heat Check** - Verify portfolio and sector heat within caps
+5. **Trade Entry** - Final 5-gate check before saving GO/NO-GO decision
+6. **Calendar** - Rolling 10-week sector × week grid for diversification
+
+See [FRESH_START_PLAN.md](FRESH_START_PLAN.md) for complete details.
 
 ---
 
-## 🎓 Core Concepts
+## Anti-Impulsivity Design
+
+Based on [docs/anti-impulsivity.md](docs/anti-impulsivity.md):
+
+### Core Principles
+
+- **Trade the tide, not the splash** - Donchian breakouts with mechanical exits
+- **Friction where it matters** - Hard gates for signal, risk, liquidity, exit, behavior
+- **Nudge for better trades** - Optional quality items affect score, not permission
+- **Immediate feedback** - Large 3-state banner updates live
+- **Journal while deciding** - One-click logging of full trade plan
+- **Calendar awareness** - 10-week sector view for diversification
 
 ### The 5 Hard Gates
-Every trade must pass ALL gates before execution:
-1. **Banner GREEN** - All 6 checklist items confirmed
-2. **Ticker in today's candidates** - Must be from FINVIZ preset
-3. **2-minute impulse brake** - Mandatory pause after evaluation
-4. **Bucket not in cooldown** - Sector restrictions after losses
-5. **Heat caps not exceeded** - Portfolio (4%) and bucket (1.5%) limits
 
-**These gates CANNOT be bypassed.** They're enforced in the Go engine, not VBA.
+1. **Signal:** 55-bar breakout (long > 55-high / short < 55-low)
+2. **Risk/Size:** Per-unit risk = % of equity using 2×N stop; pyramids every 0.5×N to max units
+3. **Options:** 60–90 DTE, roll/close ~21 DTE, liquidity required
+4. **Exits:** Exit by 10-bar opposite Donchian OR closer of 2×N
+5. **Behavior:** 2-minute cool-off + no intraday overrides
 
-### Position Sizing (Van Tharp Method)
+**RED:** Any required gate fails → **DO NOT TRADE**
+**YELLOW:** All required pass, quality score < threshold → **CAUTION**
+**GREEN:** All required pass, quality meets threshold → **OK TO TRADE**
+
+---
+
+## Directory Structure
+
 ```
-1. Risk dollars:    R = Equity × RiskPct (0.75%)
-2. Stop distance:   StopDist = K × ATR (K=2)
-3. Initial stop:    InitStop = Entry - StopDist
-4. Shares:          Shares = floor(R ÷ StopDist)
-5. Verify:          ActualRisk = Shares × StopDist ≤ R
+fresh-start/
+├── README.md                  # This file
+├── PROJECT_HISTORY.md         # What happened with Excel/VBA
+├── FRESH_START_PLAN.md        # Detailed plan for GUI
+├── ORIGINAL_README.md         # Original project README
+├── .gitignore                 # Git ignore rules
+│
+├── backend/                   # tf-engine Go backend (WORKING)
+│   ├── cmd/                   # CLI entry point
+│   ├── internal/
+│   │   ├── cli/               # Command handlers
+│   │   ├── domain/            # Business logic
+│   │   ├── storage/           # SQLite persistence
+│   │   ├── scrape/            # FINVIZ scraper
+│   │   ├── server/            # HTTP server (for Excel)
+│   │   └── logx/              # Logging
+│   ├── go.mod
+│   └── go.sum
+│
+├── scripts/                   # Build and import scripts
+│   ├── import-candidates-auto.bat
+│   ├── import-candidates.bat
+│   ├── build-windows.sh
+│   └── test-finviz-scrape.sh
+│
+├── docs/                      # Documentation
+│   ├── anti-impulsivity.md    # Core design philosophy ⭐
+│   ├── PROJECT_STATUS.md
+│   ├── M24_UI_IMPLEMENTATION_PLAN.md
+│   ├── UI_QUICK_REFERENCE.md
+│   ├── project/               # Project documentation
+│   ├── milestones/            # Milestone docs
+│   ├── dev/                   # Development docs
+│   └── json-schemas/          # JSON schemas
+│
+├── art/                       # ASCII art and assets
+│   └── tf-engine_exe-ASCII.txt
+│
+└── test-data/                 # Test databases and examples
+    ├── json-examples/
+    ├── test-contracts.db
+    ├── phase4-test-data.sql
+    └── ...
 ```
 
-### Checklist → Banner Logic
-- 0 missing → **GREEN** (go)
-- 1 missing → **YELLOW** (caution)
-- 2+ missing → **RED** (no-go)
+---
 
-Only GREEN starts the impulse timer and allows eventual save.
+## Quick Start
 
-### Heat Management
-- **Portfolio heat** = sum of risk across all open positions
-- **Portfolio cap** = Equity × 4%
-- **Bucket heat** = sum of risk within one sector bucket
-- **Bucket cap** = Equity × 1.5%
+### 1. Verify Backend Works
 
-Any trade exceeding either cap is rejected.
+```bash
+cd backend/
+go build -o tf-engine cmd/tf-engine/main.go
+./tf-engine init
+./tf-engine settings --equity 100000 --risk-pct 0.75 --portfolio-cap 4.0
+./tf-engine size --ticker AAPL --entry 180 --atr 1.5 --method stock --k 2
+```
+
+**Expected output:**
+```json
+{
+  "success": true,
+  "ticker": "AAPL",
+  "entry_price": 180,
+  "shares": 250,
+  "risk_dollars": 750,
+  "stop_price": 177,
+  ...
+}
+```
+
+If this works, backend is good to go! ✅
 
 ---
 
-## 🔧 Technical Stack
+### 2. Read the Documentation
 
-**Backend (Go):**
-- CLI framework: cobra
-- Database: SQLite (mattn/go-sqlite3)
-- HTTP: net/http (stdlib)
-- BDD: godog
-- Logging: logrus
-
-**Frontend (Excel):**
-- Excel desktop (Windows 10/11)
-- VBA (thin bridge - no business logic)
-- WScript.Shell for CLI execution
-- Simple JSON parsing (no external dependencies)
-
-**Database:**
-- SQLite (single file: trading.db)
-- Tables: settings, candidates, decisions, positions, cooldowns
-- Migrations managed by Go code
+**Start here:**
+1. [PROJECT_HISTORY.md](PROJECT_HISTORY.md) - Understand what we tried with Excel/VBA
+2. [docs/anti-impulsivity.md](docs/anti-impulsivity.md) - Core design philosophy
+3. [FRESH_START_PLAN.md](FRESH_START_PLAN.md) - Detailed GUI plan
 
 ---
 
-## 📞 Support & Troubleshooting
+### 3. Choose GUI Framework
 
-**Documentation:**
-- See [docs/README.md](docs/README.md) for complete documentation index
-- Windows testing: [windows/WINDOWS_TESTING.md](windows/WINDOWS_TESTING.md)
-- VBA specifics: [excel/VBA_MODULES_README.md](excel/VBA_MODULES_README.md)
+**Recommendation: Fyne**
 
-**Logs:**
-- `tf-engine.log` - Go backend logs (JSON, with correlation IDs)
-- `TradingSystem_Debug.log` - VBA logs (text, with correlation IDs)
-- Cross-reference using correlation IDs
+```bash
+# Install Fyne
+go get fyne.io/fyne/v2
 
-**Common Issues:**
-- Check [windows/WINDOWS_TESTING.md](windows/WINDOWS_TESTING.md) Troubleshooting section
-- Verify correlation IDs in both log files
-- Ensure database initialized: `./tf-engine init`
+# Hello World
+cat > hello.go << 'EOF'
+package main
 
----
+import (
+    "fyne.io/fyne/v2/app"
+    "fyne.io/fyne/v2/widget"
+)
 
-## 📜 License
+func main() {
+    myApp := app.New()
+    myWindow := myApp.NewWindow("TF-Engine")
+    myWindow.SetContent(widget.NewLabel("Hello TF-Engine!"))
+    myWindow.ShowAndRun()
+}
+EOF
 
-[Add license information here]
+go run hello.go
+```
 
----
-
-## 🎯 Project Values
-
-1. **Discipline** - The system enforces rules
-2. **Simplicity** - Less code, less can break
-3. **Clarity** - Errors are obvious and actionable
-4. **Reliability** - Works every time, the same way
-5. **Maintainability** - Future you can understand it
-
-**Note what's NOT on the list:**
-- Flexibility (discipline requires constraints)
-- Power features (more features = more ways to fail)
-- Customization (the rules are the rules)
-- Convenience (friction is intentional)
+If a window opens with "Hello TF-Engine!", you're ready to build! ✅
 
 ---
 
-## 🧭 The Guiding Question
+### 4. Start Building
 
-**"Does this feature help or hurt discipline?"**
+**Phase 1: Dashboard (Week 1-2)**
 
-- If it helps → Build it
-- If it hurts → Don't build it
-- If unclear → Read [docs/project/WHY.md](docs/project/WHY.md) again
+Create `frontend/` directory:
+```bash
+mkdir -p frontend/ui
+cd frontend/
+go mod init github.com/youruser/tf-engine-gui
+go get fyne.io/fyne/v2
+```
+
+Build first screen:
+```go
+// frontend/ui/dashboard.go
+package ui
+
+import (
+    "fyne.io/fyne/v2/widget"
+    "github.com/youruser/tf-engine/internal/storage"
+)
+
+func BuildDashboard(db *storage.DB) *widget.Label {
+    // Get positions from database
+    positions, _ := db.GetAllPositions()
+
+    // Display count
+    return widget.NewLabel(fmt.Sprintf("Active Positions: %d", len(positions)))
+}
+```
 
 ---
 
-**Remember:** This is a discipline enforcement system, not a flexible trading platform. The system's value comes from what it prevents (bad trades), not what it allows.
+## Backend API Reference
 
-**Code serves discipline. Discipline does not serve code.**
+### Position Sizing
+
+```go
+import "github.com/youruser/tf-engine/internal/domain"
+
+// Calculate position size
+result := domain.CalculateSize(
+    ticker:   "AAPL",
+    entry:    180.0,
+    atr:      1.5,
+    method:   "stock",
+    k:        2.0,
+    riskPct:  0.0075,
+    equity:   100000.0,
+)
+
+// result.Shares = 250
+// result.RiskDollars = 750
+// result.StopPrice = 177
+```
+
+### Checklist Evaluation
+
+```go
+import "github.com/youruser/tf-engine/internal/domain"
+
+result := domain.EvaluateChecklist(
+    fromPreset: true,
+    trendPass: true,
+    liquidityOK: true,
+    timeframeConfirm: true,
+    earningsOK: true,
+    journalOK: true,
+)
+
+// result.Banner = "GREEN" | "YELLOW" | "RED"
+// result.MissingCount = 0
+// result.AllowSave = true
+```
+
+### Heat Check
+
+```go
+import "github.com/youruser/tf-engine/internal/domain"
+
+result := domain.CheckHeat(
+    db,
+    ticker: "NVDA",
+    riskAmount: 750.0,
+    bucket: "Tech/Comm",
+)
+
+// result.CurrentPortfolioHeat = 2.25
+// result.AfterPortfolioHeat = 3.0
+// result.PortfolioCapExceeded = false
+// result.BucketCapExceeded = false
+```
+
+### 5 Gates Check
+
+```go
+import "github.com/youruser/tf-engine/internal/domain"
+
+result := domain.CheckGates(
+    db,
+    banner: "GREEN",
+    ticker: "AAPL",
+    riskDollars: 750.0,
+    bucket: "Tech/Comm",
+)
+
+// result.Gate1BannerGreen = true
+// result.Gate2CooloffElapsed = true
+// result.Gate3NotOnCooldown = true
+// result.Gate4HeatOK = true
+// result.Gate5SizingDone = true
+// result.AllGatesPass = true
+```
+
+---
+
+## Testing Strategy
+
+### Backend Testing (Already Done)
+
+```bash
+cd backend/
+go test ./internal/domain/... -v
+go test ./internal/storage/... -v
+```
+
+All tests pass ✅
+
+### GUI Testing (To Be Added)
+
+**Manual testing checklist:**
+- [ ] Dashboard displays positions correctly
+- [ ] Position sizing calculates accurately
+- [ ] Checklist banner shows correct colors
+- [ ] Heat check validates caps
+- [ ] Trade entry enforces all 5 gates
+- [ ] Calendar shows 10-week view
+
+**Automated testing:**
+- Unit tests for UI components
+- Integration tests for backend calls
+- End-to-end workflow tests
+
+---
+
+## Deployment
+
+### Build for Windows
+
+```bash
+cd frontend/
+GOOS=windows GOARCH=amd64 go build -o tf-engine-gui.exe
+```
+
+### Build for Linux
+
+```bash
+cd frontend/
+GOOS=linux GOARCH=amd64 go build -o tf-engine-gui
+```
+
+### Build for macOS
+
+```bash
+cd frontend/
+GOOS=darwin GOARCH=amd64 go build -o tf-engine-gui-mac
+```
+
+### Package with Fyne
+
+```bash
+# Install fyne CLI
+go install fyne.io/fyne/v2/cmd/fyne@latest
+
+# Package for Windows
+fyne package -os windows -icon icon.png
+
+# Package for Linux
+fyne package -os linux -icon icon.png
+
+# Package for macOS
+fyne package -os darwin -icon icon.png
+```
+
+---
+
+## Roadmap
+
+### Phase 1: Foundation (Week 1-2)
+- ✅ Set up Fyne project
+- ✅ Integrate tf-engine backend
+- ✅ Build Dashboard (read-only)
+
+### Phase 2: Core Functionality (Week 3-4)
+- ⬜ Build Position Sizing screen
+- ⬜ Build Checklist screen with banner
+
+### Phase 3: Heat & Gates (Week 5-6)
+- ⬜ Build Heat Check screen
+- ⬜ Build Trade Entry screen
+- ⬜ Implement 5 gates enforcement
+
+### Phase 4: Calendar & Polish (Week 7-8)
+- ⬜ Build Calendar screen
+- ⬜ Polish all screens
+- ⬜ Add keyboard shortcuts
+
+### Phase 5: Testing & Deployment (Week 9-10)
+- ⬜ Integration testing
+- ⬜ Package for all platforms
+- ⬜ Create user documentation
+
+---
+
+## Contributing
+
+This is a personal trading system, but contributions are welcome:
+
+1. **Report bugs** - Open an issue on GitHub
+2. **Suggest features** - Propose enhancements aligned with anti-impulsivity design
+3. **Submit PRs** - Backend improvements, GUI components, documentation
+
+**Anti-patterns to avoid:**
+- Don't add subjective pattern checks to required gates
+- Don't over-complicate the workflow
+- Don't add features that encourage impulsivity
+
+---
+
+## FAQ
+
+### Q: Why not keep Excel?
+
+Excel/VBA had fundamental integration issues (see PROJECT_HISTORY.md). After 5+ major issues, it's time for a better approach.
+
+### Q: Why not use a web UI?
+
+Native GUI is faster, more responsive, and easier to deploy (single binary).
+
+### Q: Can I still use the CLI?
+
+Yes! The backend supports both CLI and programmatic usage.
+
+```bash
+./tf-engine size --ticker AAPL --entry 180 --atr 1.5 --method stock
+```
+
+### Q: What about the Excel workbook?
+
+It's archived in the original project. The VBA code and documentation are preserved in `/home/kali/excel-trading-platform/release/TradingEngine-v3/`.
+
+### Q: How long will this take?
+
+**Aggressive timeline:** 8 weeks
+**Conservative timeline:** 12 weeks
+
+See [FRESH_START_PLAN.md](FRESH_START_PLAN.md) for detailed schedule.
+
+### Q: What GUI framework are you using?
+
+**Recommendation: Fyne** (pure Go, cross-platform, Material Design)
+
+Alternatives: Gio (immediate mode), Wails (Go + web frontend)
+
+### Q: Will it work on macOS/Linux?
+
+Yes! Go and Fyne are cross-platform. Build once, deploy everywhere.
+
+---
+
+## Resources
+
+### Learning Fyne
+
+- **Official Docs:** https://fyne.io/
+- **Tutorial:** https://developer.fyne.io/tutorial/
+- **Widget Tour:** https://apps.fyne.io/
+- **Examples:** https://github.com/fyne-io/examples
+
+### Go Best Practices
+
+- **Effective Go:** https://go.dev/doc/effective_go
+- **Go by Example:** https://gobyexample.com/
+- **Project Layout:** https://github.com/golang-standards/project-layout
+
+### Anti-Impulsivity Trading
+
+- **Turtle Traders:** https://en.wikipedia.org/wiki/Turtle_trading
+- **Ed Seykota:** https://www.seykota.com/
+- **ATR-Based Stops:** Technical analysis standard (Wilder's ATR)
+
+---
+
+## License
+
+This is a personal trading system. Use at your own risk.
+
+**Disclaimer:** Trading involves risk. This software is for educational purposes and personal use. Past performance does not guarantee future results.
+
+---
+
+## Support
+
+For questions or issues:
+1. Check [PROJECT_HISTORY.md](PROJECT_HISTORY.md) for context
+2. Review [FRESH_START_PLAN.md](FRESH_START_PLAN.md) for implementation details
+3. Read [docs/anti-impulsivity.md](docs/anti-impulsivity.md) for design philosophy
+4. Open an issue on GitHub
+
+---
+
+## Status
+
+**Backend:** ✅ 100% Functional
+**Frontend:** 🚧 To be built
+**Timeline:** 8-12 weeks
+**Next Action:** Choose GUI framework and build Hello World
+
+---
+
+**Last Updated:** October 29, 2025
+**Version:** v4.0 (Fresh Start)
+**Status:** 📋 Planning complete, ready to build
+
+**Let's build something better!** 🚀

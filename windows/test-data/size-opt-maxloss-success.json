@@ -1,9 +1,0 @@
-{
-  "risk_dollars": 75,
-  "stop_distance": 0,
-  "initial_stop": 0,
-  "shares": 0,
-  "contracts": 1,
-  "actual_risk": 50,
-  "method": "opt-maxloss"
-}
