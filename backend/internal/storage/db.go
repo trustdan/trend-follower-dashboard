@@ -3,14 +3,16 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 // DB wraps the SQLite database connection
 type DB struct {
-	conn *sql.DB
-	path string
+	conn  *sql.DB
+	path  string
+	cache *Cache
 }
 
 // New creates a new database connection
@@ -26,9 +28,31 @@ func New(dbPath string) (*DB, error) {
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
+	// Performance optimizations for SQLite
+	if _, err := conn.Exec("PRAGMA journal_mode = WAL"); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to enable WAL mode: %w", err)
+	}
+
+	if _, err := conn.Exec("PRAGMA synchronous = NORMAL"); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to set synchronous mode: %w", err)
+	}
+
+	if _, err := conn.Exec("PRAGMA cache_size = -64000"); err != nil { // 64MB cache
+		conn.Close()
+		return nil, fmt.Errorf("failed to set cache size: %w", err)
+	}
+
+	if _, err := conn.Exec("PRAGMA temp_store = MEMORY"); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to set temp store: %w", err)
+	}
+
 	return &DB{
-		conn: conn,
-		path: dbPath,
+		conn:  conn,
+		path:  dbPath,
+		cache: NewCache(),
 	}, nil
 }
 
@@ -79,11 +103,21 @@ func (db *DB) SetSetting(key, value string) error {
 	if err != nil {
 		return fmt.Errorf("failed to set setting: %w", err)
 	}
+
+	// Invalidate cache
+	db.cache.Delete("all_settings")
+	db.cache.Delete("setting:" + key)
+
 	return nil
 }
 
 // GetAllSettings retrieves all configuration key-value pairs
 func (db *DB) GetAllSettings() (map[string]string, error) {
+	// Try cache first (5 minute TTL)
+	if cached, ok := db.cache.Get("all_settings"); ok {
+		return cached.(map[string]string), nil
+	}
+
 	query := `SELECT key, value FROM settings ORDER BY key`
 	rows, err := db.conn.Query(query)
 	if err != nil {
@@ -103,6 +137,9 @@ func (db *DB) GetAllSettings() (map[string]string, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating settings: %w", err)
 	}
+
+	// Cache for 5 minutes
+	db.cache.Set("all_settings", settings, 5*time.Minute)
 
 	return settings, nil
 }

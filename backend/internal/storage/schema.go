@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS decisions (
 
 CREATE INDEX IF NOT EXISTS idx_decisions_date ON decisions(date);
 CREATE INDEX IF NOT EXISTS idx_decisions_ticker ON decisions(ticker);
+CREATE INDEX IF NOT EXISTS idx_decisions_created_at ON decisions(created_at DESC);
 
 -- Positions table: Open and closed trades
 CREATE TABLE IF NOT EXISTS positions (
@@ -96,6 +97,7 @@ CREATE TABLE IF NOT EXISTS positions (
 CREATE INDEX IF NOT EXISTS idx_positions_ticker ON positions(ticker);
 CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status);
 CREATE INDEX IF NOT EXISTS idx_positions_bucket ON positions(bucket);
+CREATE INDEX IF NOT EXISTS idx_positions_status_opened ON positions(status, opened_at DESC);
 
 -- Impulse timers table: 2-minute brake enforcement
 CREATE TABLE IF NOT EXISTS impulse_timers (

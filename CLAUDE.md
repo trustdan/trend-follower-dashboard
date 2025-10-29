@@ -2,6 +2,44 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Notifications
+**CRITICAL:** When tasks complete OR when prompting me for user input (yes/no, confirmation, choices), notify me using:
+
+**Primary method (Windows Toast Notification):**
+```bash
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command "
+[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
+
+\$template = @'
+<toast>
+    <visual>
+        <binding template=\"ToastText02\">
+            <text id=\"1\">TF-Engine</text>
+            <text id=\"2\">Task complete - ready for your input</text>
+        </binding>
+    </visual>
+</toast>
+'@
+
+\$xml = New-Object Windows.Data.Xml.Dom.XmlDocument
+\$xml.LoadXml(\$template)
+\$toast = [Windows.UI.Notifications.ToastNotification]::new(\$xml)
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Claude Code').Show(\$toast)
+"
+```
+
+**Use cases:**
+- ✓ Task completion (build finished, tests passed, files updated)
+- ✓ Prompting for user decisions (yes/no, confirmation, choose option A/B)
+- ✓ Asking clarifying questions before proceeding
+- ✗ NOT for simple status updates or informational messages
+
+**Customize message:** Change the second `<text id=\"2\">` line to reflect the context:
+- Task done: "Task complete - ready for your input"
+- Question: "Question - your response needed"
+- Error/blocker: "Action required - awaiting decision"
+
 ## Project Overview
 
 **TF-Engine: Fresh Start Trading Platform** - A trend-following trading system that enforces discipline through systematic constraints.

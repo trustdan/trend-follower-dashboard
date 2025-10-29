@@ -2,9 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CSS Variables for theming (from overview-plan.md) */
+/* ========================================
+   TF-Engine Design System
+   ======================================== */
+
 :root {
-	/* Day mode (light theme) */
+	/* ===== Colors - Day Mode ===== */
 	--bg-primary: #FFFFFF;
 	--bg-secondary: #F9FAFB;
 	--bg-tertiary: #F3F4F6;
@@ -13,10 +16,76 @@
 	--text-tertiary: #9CA3AF;
 	--border-color: #E5E7EB;
 	--border-focus: #3B82F6;
+
+	/* ===== Color Palette ===== */
+	--color-red-500: #EF4444;
+	--color-red-600: #DC2626;
+	--color-red-700: #991B1B;
+	--color-yellow-500: #FBBF24;
+	--color-yellow-600: #F59E0B;
+	--color-yellow-700: #D97706;
+	--color-green-500: #10B981;
+	--color-green-600: #059669;
+	--color-green-700: #047857;
+	--color-blue-400: #60A5FA;
+	--color-blue-500: #3B82F6;
+	--color-blue-600: #2563EB;
+	--color-blue-700: #1D4ED8;
+	--color-purple-500: #8B5CF6;
+	--color-purple-600: #7C3AED;
+	--color-purple-700: #6D28D9;
+
+	/* ===== Gradients ===== */
+	--gradient-red: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+	--gradient-yellow: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+	--gradient-green: linear-gradient(135deg, #10B981 0%, #059669 100%);
+	--gradient-blue: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+	--gradient-purple: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+
+	/* ===== Spacing Scale (4px base) ===== */
+	--space-1: 4px;
+	--space-2: 8px;
+	--space-3: 12px;
+	--space-4: 16px;
+	--space-5: 20px;
+	--space-6: 24px;
+	--space-8: 32px;
+	--space-10: 40px;
+	--space-12: 48px;
+	--space-16: 64px;
+
+	/* ===== Typography Scale ===== */
+	--text-xs: 0.75rem;    /* 12px */
+	--text-sm: 0.875rem;   /* 14px */
+	--text-base: 1rem;     /* 16px */
+	--text-lg: 1.125rem;   /* 18px */
+	--text-xl: 1.25rem;    /* 20px */
+	--text-2xl: 1.5rem;    /* 24px */
+	--text-3xl: 1.875rem;  /* 30px */
+	--text-4xl: 2.25rem;   /* 36px */
+
+	/* ===== Border Radius ===== */
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 8px;
+	--radius-xl: 12px;
+	--radius-2xl: 16px;
+	--radius-full: 9999px;
+
+	/* ===== Shadows (Elevation System) ===== */
+	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+	--shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+	--shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+	--shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.2);
+
+	/* ===== Transition Durations ===== */
+	--transition-fast: 150ms;
+	--transition-base: 200ms;
+	--transition-slow: 300ms;
 }
 
 :root.dark {
-	/* Night mode (dark theme) */
+	/* ===== Colors - Night Mode ===== */
 	--bg-primary: #0F172A;
 	--bg-secondary: #1E293B;
 	--bg-tertiary: #334155;
@@ -25,6 +94,12 @@
 	--text-tertiary: #94A3B8;
 	--border-color: #334155;
 	--border-focus: #60A5FA;
+
+	/* Shadows adjusted for dark mode */
+	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+	--shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+	--shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+	--shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
 /* Smooth transitions for all theme changes (0.3s ease-in-out) */
