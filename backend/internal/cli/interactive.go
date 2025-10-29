@@ -50,7 +50,7 @@ var progressFrames = []string{
 func showBanner() {
 	// Clear screen for Windows
 	fmt.Print("\033[2J\033[H")
-	fmt.Println(banner)
+	fmt.Print(banner)
 	time.Sleep(500 * time.Millisecond)
 }
 

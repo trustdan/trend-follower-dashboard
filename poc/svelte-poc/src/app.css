@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables for theming */
+:root {
+	/* Day mode (light theme) */
+	--bg-primary: #FFFFFF;
+	--bg-secondary: #F9FAFB;
+	--bg-tertiary: #F3F4F6;
+	--text-primary: #111827;
+	--text-secondary: #6B7280;
+	--text-tertiary: #9CA3AF;
+	--border-color: #E5E7EB;
+	--border-focus: #3B82F6;
+}
+
+:root.dark {
+	/* Night mode (dark theme) */
+	--bg-primary: #0F172A;
+	--bg-secondary: #1E293B;
+	--bg-tertiary: #334155;
+	--text-primary: #F1F5F9;
+	--text-secondary: #CBD5E1;
+	--text-tertiary: #94A3B8;
+	--border-color: #334155;
+	--border-focus: #60A5FA;
+}
+
+/* Smooth transitions for theme changes */
+* {
+	transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+}
+
+/* Banner gradient classes */
+.banner-red {
+	background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+}
+
+.banner-yellow {
+	background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+}
+
+.banner-green {
+	background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+/* Banner animation */
+.banner {
+	transition: background 0.3s ease-in-out;
+	animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.02);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
