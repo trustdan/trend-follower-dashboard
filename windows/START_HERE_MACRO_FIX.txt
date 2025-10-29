@@ -1,0 +1,127 @@
+================================================================================
+  MACRO FIX - START HERE
+================================================================================
+
+Issue: "Argument not optional" error when clicking macro buttons
+Status: FIXED - Follow steps below to apply the fix
+
+================================================================================
+  QUICK FIX (2 minutes)
+================================================================================
+
+1. CLOSE Excel if TradingPlatform.xlsm is currently open
+
+2. DOUBLE-CLICK: fix-vba-modules.bat
+
+3. WAIT for the script to complete (shows "SUCCESS!" when done)
+
+4. OPEN TradingPlatform.xlsm
+
+5. ENABLE MACROS (click "Enable Content" button)
+
+6. TEST Position Sizing sheet - click "Calculate" button
+
+7. Should work now! ✓
+
+================================================================================
+  WHAT WAS FIXED
+================================================================================
+
+Two problems were causing the error:
+
+1. VBA modules (TFEngine, TFHelpers, TFTypes, TFTests) were not imported
+   into your Excel workbook
+
+2. The VBA code had function signature mismatches - Parse functions were
+   defined as Subs but called like Functions
+
+Both issues are now fixed in the source files.
+
+================================================================================
+  VERIFY THE FIX WORKED
+================================================================================
+
+After running fix-vba-modules.bat, run this command:
+
+    cscript check-vba-version.vbs
+
+Should show: "✓ YOU HAVE THE FIXED VERSION!"
+
+If it shows "✗ OLD (BROKEN) VERSION", run fix-vba-modules.bat again.
+
+================================================================================
+  TEST CHECKLIST
+================================================================================
+
+After fixing, test these worksheets:
+
+  [ ] Position Sizing - Click "Calculate" button
+  [ ] Checklist - Click "Evaluate" button
+  [ ] Heat Check - Click "Check Heat" button
+  [ ] Trade Entry - Click "Save GO" button
+  [ ] VBA Tests - Click "Run All Tests" button
+
+All should work without "argument not optional" errors.
+
+================================================================================
+  NEW FEATURES
+================================================================================
+
+FEATURE 1: Manual Data Import
+  - Import database data to Dashboard
+  - Alt+F8 → RefreshDashboardData → Run
+  - See: QUICK_IMPORT_REFERENCE.txt
+
+FEATURE 2: Demo Worksheet with Sample Data
+  - Test macros with realistic sample data
+  - Alt+F8 → PopulateSampleData → Run
+  - Alt+F8 → ClearSampleData → Run (to clear)
+  - 3 pre-built scenarios (stock, yellow banner, option)
+  - See: DEMO_QUICK_REFERENCE.txt
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+Error: "Cannot access VBA project"
+Fix: Enable macro security in Excel:
+     File > Options > Trust Center > Trust Center Settings
+     > Macro Settings > Enable all macros
+     > Check "Trust access to the VBA project object model"
+     Close Excel and run fix-vba-modules.bat again
+
+Error: Still says "argument not optional"
+Fix: Make sure you ran fix-vba-modules.bat AFTER copying the new files
+     The old TFEngine.bas had the bug, new one is fixed
+
+Error: "TradingPlatform.xlsm not found"
+Fix: Make sure you're running fix-vba-modules.bat from the same folder
+     as TradingPlatform.xlsm
+
+================================================================================
+  MORE INFO
+================================================================================
+
+COMPLETE_FIX_GUIDE.md        - Detailed explanation and troubleshooting
+VBA_SIGNATURE_FIX_README.md  - Technical details of what was changed
+MACRO_FIX_GUIDE.md           - Original fix guide
+check-vba-version.vbs        - Verify which version you have
+test-vba-setup.vbs           - Diagnose VBA module issues
+
+================================================================================
+  NEED HELP?
+================================================================================
+
+1. Read COMPLETE_FIX_GUIDE.md (most comprehensive)
+2. Run: cscript test-vba-setup.vbs (diagnostic)
+3. Run: cscript check-vba-version.vbs (version check)
+4. Check logs:
+   - TradingSystem_Debug.log (VBA frontend)
+   - tf-engine.log (Go backend)
+
+================================================================================
+
+Last Updated: 2025-10-28
+Fix Version: v3.1 (Function Signature Corrections)
+
+All macros should work correctly after applying this fix!

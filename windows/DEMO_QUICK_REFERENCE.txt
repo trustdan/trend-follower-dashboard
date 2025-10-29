@@ -1,0 +1,89 @@
+================================================================================
+  DEMO WORKSHEET - QUICK REFERENCE
+================================================================================
+
+POPULATE SAMPLE DATA:
+  Alt+F8 → PopulateSampleData → Run
+  (Fills all sheets with test data)
+
+CLEAR SAMPLE DATA:
+  Alt+F8 → ClearSampleData → Run → Yes
+  (Clears all test data)
+
+================================================================================
+  SCENARIOS
+================================================================================
+
+Scenario 1: Simple Stock (GREEN) - Everything passes
+  Alt+F8 → LoadScenario1_SimpleStock → Run
+  - AAPL, $180, GREEN banner
+  - Expected: ~250 shares, PASS 5 gates
+
+Scenario 2: Yellow Banner (FAIL) - Checklist fails
+  Alt+F8 → LoadScenario2_YellowBanner → Run
+  - NVDA, $450, YELLOW banner (1 failed)
+  - Expected: ~31 shares, FAIL gate 1
+
+Scenario 3: Option Trade (GREEN) - Delta-ATR method
+  Alt+F8 → LoadScenario3_OptionTrade → Run
+  - TSLA, $250, opt-delta-atr, delta 0.65
+  - Expected: Option contracts, PASS 5 gates
+
+================================================================================
+  TESTING WORKFLOW
+================================================================================
+
+1. Load sample data (or a scenario)
+2. Go to Position Sizing → Click "Calculate"
+3. Go to Checklist → Click "Evaluate"
+4. Go to Heat Check → Click "Check Heat"
+5. Go to Trade Entry → Click "Save GO"
+6. Clear sample data when done
+
+================================================================================
+  SAMPLE DATA POPULATED
+================================================================================
+
+Position Sizing:  AAPL, $180, ATR 1.5, K=2, stock
+Checklist:        NVDA, 5 TRUE + 1 FALSE = YELLOW
+Heat Check:       MSFT, $750 risk, Tech/Comm
+Trade Entry:      TSLA, $250, GREEN, Auto/Transport
+
+================================================================================
+  ADD BUTTONS TO DEMO SHEET (Optional)
+================================================================================
+
+1. Create sheet named "Demo"
+2. Developer → Insert → Button (Form Control)
+3. Draw button
+4. Assign macro: PopulateSampleData (or other function)
+5. Edit text to describe button
+6. Repeat for other functions
+
+Suggested buttons:
+  - Populate Sample Data
+  - Clear Sample Data
+  - Scenario 1: Simple Stock
+  - Scenario 2: Yellow Banner
+  - Scenario 3: Option Trade
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+Functions not in macro list?
+  → Run fix-vba-modules.bat
+
+Subscript out of range error?
+  → Make sure sheets are named exactly:
+    Position Sizing, Checklist, Heat Check, Trade Entry
+
+Buttons don't work?
+  → Enable macros (Enable Content button)
+  → Right-click button → Assign Macro → Select function
+
+================================================================================
+
+More info: DEMO_WORKSHEET_GUIDE.md
+
+Last Updated: 2025-10-28
