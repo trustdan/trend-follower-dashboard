@@ -387,23 +387,45 @@ All tests pass ✅
 
 ### Build for Windows
 
+**From Linux/macOS (bash):**
 ```bash
 cd frontend/
 GOOS=windows GOARCH=amd64 go build -o tf-engine-gui.exe
 ```
 
+**From Windows (PowerShell):**
+```powershell
+cd frontend/
+# Build for Windows (native - no env vars needed)
+go build -o tf-engine-gui.exe
+```
+
 ### Build for Linux
 
+**From Linux/macOS (bash):**
 ```bash
 cd frontend/
 GOOS=linux GOARCH=amd64 go build -o tf-engine-gui
 ```
 
+**From Windows (PowerShell):**
+```powershell
+cd frontend/
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o tf-engine-gui
+```
+
 ### Build for macOS
 
+**From Linux/macOS (bash):**
 ```bash
 cd frontend/
 GOOS=darwin GOARCH=amd64 go build -o tf-engine-gui-mac
+```
+
+**From Windows (PowerShell):**
+```powershell
+cd frontend/
+$env:GOOS="darwin"; $env:GOARCH="amd64"; go build -o tf-engine-gui-mac
 ```
 
 ### Package with Fyne

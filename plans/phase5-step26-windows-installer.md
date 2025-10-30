@@ -123,8 +123,14 @@ go-winres make --in rsrc.rc --out rsrc.syso --arch amd64
 
 Rebuild Windows binary (will now include icon):
 
+**Linux/macOS (bash):**
 ```bash
 GOOS=windows GOARCH=amd64 go build -o tf-engine.exe .
+```
+
+**Windows (PowerShell):**
+```powershell
+go build -o tf-engine.exe .
 ```
 
 ---
@@ -253,7 +259,24 @@ Or skip license by removing `WixUILicenseRtf` line.
 
 #### Task 2.4: Build Installer (30 min)
 
-**File:** `installer/build.bat`
+**File (PowerShell):** `installer/build.ps1`
+
+```powershell
+Write-Host "Building TF-Engine Installer..."
+
+# Ensure tf-engine.exe is built
+cd ..\backend
+go build -o tf-engine.exe cmd/tf-engine/main.go
+cd ..\installer
+
+# Build MSI
+wix build Product.wxs -o TF-Engine-Setup-v1.0.0.msi
+
+Write-Host "Done! Installer: TF-Engine-Setup-v1.0.0.msi"
+pause
+```
+
+**File (Batch - alternative):** `installer/build.bat`
 
 ```batch
 @echo off
@@ -261,8 +284,6 @@ echo Building TF-Engine Installer...
 
 REM Ensure tf-engine.exe is built
 cd ..\backend
-set GOOS=windows
-set GOARCH=amd64
 go build -o tf-engine.exe cmd/tf-engine/main.go
 cd ..\installer
 

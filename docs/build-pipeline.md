@@ -48,9 +48,9 @@ Builds Svelte UI and copies to Go embed directory.
 
 ---
 
-### `scripts/build-go-windows.sh`
+### `scripts/build-go-windows.sh` (Linux/macOS)
 
-Cross-compiles Go backend (with embedded UI) to Windows .exe.
+Cross-compiles Go backend (with embedded UI) to Windows .exe from Linux/macOS.
 
 **Usage:**
 ```bash
@@ -67,6 +67,40 @@ Cross-compiles Go backend (with embedded UI) to Windows .exe.
 - PE32+ Windows executable
 
 **Duration:** ~10-15 seconds
+
+---
+
+### Building on Windows (PowerShell)
+
+If you're already on Windows, you can build natively without cross-compilation.
+
+**Build Svelte UI:**
+```powershell
+cd ui
+npm ci
+npm run build
+```
+
+**Copy UI to Go embed directory:**
+```powershell
+# Clear old files
+Remove-Item -Path ..\backend\internal\webui\dist\* -Recurse -Force -ErrorAction SilentlyContinue
+
+# Copy new build
+Copy-Item -Path .\build\* -Destination ..\backend\internal\webui\dist\ -Recurse
+```
+
+**Build Windows .exe:**
+```powershell
+cd ..\backend
+go build -o tf-engine.exe cmd/tf-engine/main.go
+```
+
+**Output:**
+- `backend/tf-engine.exe` (~11 MB)
+- Native Windows executable
+
+**Duration:** ~15-20 seconds total
 
 ---
 

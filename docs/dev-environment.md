@@ -43,6 +43,7 @@
 
 ### Backend Development
 
+**Linux/macOS (bash):**
 ```bash
 # Navigate to backend
 cd /home/kali/fresh-start-trading-platform/backend
@@ -52,6 +53,30 @@ go build -o tf-engine cmd/tf-engine/main.go
 
 # Build Windows binary
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o tf-engine.exe cmd/tf-engine/main.go
+
+# Run all tests
+go test ./... -v
+
+# Run tests with coverage
+go test ./... -cover
+
+# Run specific domain tests
+go test ./internal/domain/... -v
+
+# Run storage tests
+go test ./internal/storage/... -v
+```
+
+**Windows (PowerShell):**
+```powershell
+# Navigate to backend
+cd C:\Users\Dan\trend-follower-dashboard\backend
+
+# Build Windows binary
+go build -o tf-engine.exe cmd/tf-engine/main.go
+
+# Build for Linux (cross-compile)
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build -trimpath -ldflags "-s -w" -o tf-engine cmd/tf-engine/main.go
 
 # Run all tests
 go test ./... -v
@@ -87,6 +112,7 @@ cd /home/kali/fresh-start-trading-platform/backend
 
 ### Cross-Compilation
 
+**From Linux/macOS (bash):**
 ```bash
 # Windows (amd64)
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o tf-engine.exe cmd/tf-engine/main.go
@@ -99,6 +125,21 @@ GOOS=darwin GOARCH=amd64 go build -o tf-engine-mac cmd/tf-engine/main.go
 
 # macOS (arm64 / M1/M2)
 GOOS=darwin GOARCH=arm64 go build -o tf-engine-mac-arm cmd/tf-engine/main.go
+```
+
+**From Windows (PowerShell):**
+```powershell
+# Windows (native - no env vars needed)
+go build -trimpath -ldflags "-s -w" -o tf-engine.exe cmd/tf-engine/main.go
+
+# Linux (amd64)
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o tf-engine cmd/tf-engine/main.go
+
+# macOS (amd64)
+$env:GOOS="darwin"; $env:GOARCH="amd64"; go build -o tf-engine-mac cmd/tf-engine/main.go
+
+# macOS (arm64 / M1/M2)
+$env:GOOS="darwin"; $env:GOARCH="arm64"; go build -o tf-engine-mac-arm cmd/tf-engine/main.go
 ```
 
 ## Testing Strategy

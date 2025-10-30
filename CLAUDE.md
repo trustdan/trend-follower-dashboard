@@ -100,6 +100,7 @@ Future State (To Build):
 
 ### Backend Development
 
+**Linux/macOS (bash):**
 ```bash
 # Navigate to backend
 cd backend/
@@ -134,11 +135,47 @@ go test ./... -v
 ./tf-engine server --listen 127.0.0.1:18888
 ```
 
+**Windows (PowerShell):**
+```powershell
+# Navigate to backend
+cd backend/
+
+# Build the binary
+go build -o tf-engine.exe cmd/tf-engine/main.go
+
+# Run tests (comprehensive test suite)
+go test ./internal/domain/... -v
+go test ./internal/storage/... -v
+go test ./... -v
+
+# Initialize database
+.\tf-engine.exe init
+
+# Configure settings
+.\tf-engine.exe settings --equity 100000 --risk-pct 0.75 --portfolio-cap 4.0
+
+# Position sizing calculation
+.\tf-engine.exe size --ticker AAPL --entry 180 --atr 1.5 --method stock --k 2
+
+# Checklist evaluation
+.\tf-engine.exe checklist --ticker AAPL --from-preset true --trend true --liquidity true --timeframe true --earnings true --journal true
+
+# Heat check
+.\tf-engine.exe heat --risk 750 --bucket "Tech/Comm"
+
+# Import candidates from FINVIZ
+.\tf-engine.exe import-candidates --preset TF_BREAKOUT_LONG
+
+# Start HTTP server (legacy)
+.\tf-engine.exe server --listen 127.0.0.1:18888
+```
+
 ### Cross-Platform Building
 
+**From Linux/macOS (bash):**
 ```bash
-# Build for Windows (from Linux)
 cd backend/
+# Build for Windows
 GOOS=windows GOARCH=amd64 go build -o tf-engine.exe cmd/tf-engine/main.go
 
 # Build for Linux
@@ -146,6 +183,19 @@ GOOS=linux GOARCH=amd64 go build -o tf-engine cmd/tf-engine/main.go
 
 # Build for macOS
 GOOS=darwin GOARCH=amd64 go build -o tf-engine-mac cmd/tf-engine/main.go
+```
+
+**From Windows (PowerShell):**
+```powershell
+cd backend/
+# Build for Windows (native - no env vars needed)
+go build -o tf-engine.exe cmd/tf-engine/main.go
+
+# Build for Linux
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o tf-engine cmd/tf-engine/main.go
+
+# Build for macOS
+$env:GOOS="darwin"; $env:GOARCH="amd64"; go build -o tf-engine-mac cmd/tf-engine/main.go
 ```
 
 ### Testing Strategy
