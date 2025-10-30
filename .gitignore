@@ -12,7 +12,8 @@
 *.dll
 *.so
 *.dylib
-tf-engine
+/backend/tf-engine
+/backend/main
 tf-engine.exe
 
 # Go test binaries
