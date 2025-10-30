@@ -28,8 +28,7 @@ func main() {
 	case "server":
 		ServerCommand()
 	case "init":
-		fmt.Println("TODO: Implement init command")
-		os.Exit(1)
+		InitCommand()
 	case "settings":
 		fmt.Println("TODO: Implement settings command")
 		os.Exit(1)

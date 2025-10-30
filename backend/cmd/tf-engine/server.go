@@ -21,7 +21,7 @@ import (
 func ServerCommand() {
 	// Parse flags
 	listen := flag.String("listen", "127.0.0.1:8080", "Address to listen on")
-	dbPath := flag.String("db", "trading.db", "Path to database file")
+	dbPath := flag.String("db", getDefaultDBPath(), "Path to database file")
 	flag.Parse()
 
 	// Initialize logger (simple stdout logger for now)
