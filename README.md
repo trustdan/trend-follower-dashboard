@@ -3,9 +3,34 @@
 **TF = Trend Following** - Systematic Donchian breakout system following Ed Seykota/Turtle Trader principles
 
 **Created:** October 29, 2025
-**Status:** 🚀 Ready to build
+**Status:** 🚀 Backend Ready | Documentation Complete (Step 27)
 **Backend:** ✅ 100% Functional (tf-engine in Go)
-**Frontend:** 🚧 To be built (custom GUI)
+**Frontend:** ✅ Embedded UI (Svelte) - Production Ready
+**Installer:** 🚧 Phase 1 Complete (Step 26)
+
+---
+
+## 📚 User Documentation
+
+**New to TF-Engine? Start here:**
+
+### Getting Started
+- **[Quick Start](docs/QUICK_START.md)** - Get started in 10 minutes ⚡
+- **[Installation Guide](docs/INSTALLATION_GUIDE.md)** - Windows setup instructions
+- **[TradingView Setup](docs/TRADINGVIEW_SETUP.md)** - Install Ed-Seykota Pine Script
+
+### Complete Guide
+- **[User Guide](docs/USER_GUIDE.md)** - Comprehensive documentation (primary reference)
+  - Daily trading workflow
+  - Understanding the 5 gates
+  - Banner states (RED/YELLOW/GREEN)
+  - Position sizing (Van Tharp method)
+  - Heat management
+  - Tips & best practices
+
+### Help & Support
+- **[FAQ](docs/FAQ.md)** - Frequently asked questions
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ---
 
