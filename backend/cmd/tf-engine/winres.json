@@ -1,0 +1,28 @@
+{
+  "RT_ICON": {
+    "#1": "../../assets/trend_following_icon.ico"
+  },
+  "RT_GROUP_ICON": {
+    "#1": ["#1"]
+  },
+  "RT_VERSION": {
+    "#1": {
+      "fixed": {
+        "file_version": "1.0.0.0",
+        "product_version": "1.0.0.0"
+      },
+      "info": {
+        "0409": {
+          "CompanyName": "TF-Engine",
+          "FileDescription": "TF-Engine - Trend Following Trading System",
+          "FileVersion": "1.0.0",
+          "InternalName": "tf-engine",
+          "LegalCopyright": "Copyright © 2025",
+          "OriginalFilename": "tf-engine.exe",
+          "ProductName": "TF-Engine",
+          "ProductVersion": "1.0.0"
+        }
+      }
+    }
+  }
+}
