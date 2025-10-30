@@ -144,63 +144,61 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 	})
 	welcomeBtn.Importance = widget.HighImportance
 
-	// Create navigation menu
-	nav := widget.NewList(
-		func() int {
-			return 7 // Number of menu items
-		},
-		func() fyne.CanvasObject {
-			return widget.NewLabel("Menu Item")
-		},
-		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			label := obj.(*widget.Label)
-			switch id {
-			case 0:
-				label.SetText("📊 Dashboard")
-			case 1:
-				label.SetText("🔍 Scanner")
-			case 2:
-				label.SetText("✅ Checklist")
-			case 3:
-				label.SetText("📐 Position Sizing")
-			case 4:
-				label.SetText("🔥 Heat Check")
-			case 5:
-				label.SetText("💰 Trade Entry")
-			case 6:
-				label.SetText("📅 Calendar")
-			}
-		},
-	)
+	// Navigation buttons
+	navItems := []struct {
+		title string
+		build func(*AppState) fyne.CanvasObject
+	}{
+		{"📊 Dashboard", buildDashboardScreen},
+		{"🔍 Scanner", buildScannerScreen},
+		{"✅ Checklist", buildChecklistScreen},
+		{"📐 Position Sizing", buildPositionSizingScreen},
+		{"🔥 Heat Check", buildHeatCheckScreen},
+		{"💰 Trade Entry", buildTradeEntryScreen},
+		{"📅 Calendar", buildCalendarScreen},
+	}
 
-	// Content area (will be swapped based on navigation)
+	navButtons := make([]*widget.Button, len(navItems))
 	contentArea := container.NewStack()
 
-	// Set initial content to Dashboard
-	contentArea.Objects = []fyne.CanvasObject{
-		buildDashboardScreen(state),
+	updateNavSelection := func(idx int) {
+		if idx < 0 || idx >= len(navItems) {
+			return
+		}
+
+		contentArea.Objects = []fyne.CanvasObject{navItems[idx].build(state)}
+		contentArea.Refresh()
+
+		for i, btn := range navButtons {
+			if btn == nil {
+				continue
+			}
+			if i == idx {
+				btn.Importance = widget.HighImportance
+			} else {
+				btn.Importance = widget.LowImportance
+			}
+			btn.Refresh()
+		}
 	}
 
-	// Handle navigation selection
-	nav.OnSelected = func(id widget.ListItemID) {
-		switch id {
-		case 0:
-			contentArea.Objects = []fyne.CanvasObject{buildDashboardScreen(state)}
-		case 1:
-			contentArea.Objects = []fyne.CanvasObject{buildScannerScreen(state)}
-		case 2:
-			contentArea.Objects = []fyne.CanvasObject{buildChecklistScreen(state)}
-		case 3:
-			contentArea.Objects = []fyne.CanvasObject{buildPositionSizingScreen(state)}
-		case 4:
-			contentArea.Objects = []fyne.CanvasObject{buildHeatCheckScreen(state)}
-		case 5:
-			contentArea.Objects = []fyne.CanvasObject{buildTradeEntryScreen(state)}
-		case 6:
-			contentArea.Objects = []fyne.CanvasObject{buildCalendarScreen(state)}
-		}
-		contentArea.Refresh()
+	for i, item := range navItems {
+		idx := i
+		btn := widget.NewButton(item.title, func() {
+			updateNavSelection(idx)
+		})
+		btn.Alignment = widget.ButtonAlignLeading
+		btn.Importance = widget.LowImportance
+		navButtons[i] = btn
 	}
+
+	// Convert navButtons to []fyne.CanvasObject for VBox
+	navObjects := make([]fyne.CanvasObject, len(navButtons))
+	for i, btn := range navButtons {
+		navObjects[i] = btn
+	}
+	navContainer := container.NewVBox(navObjects...)
+	updateNavSelection(0)
 
 	// Initialize VIM mode and wire up the toggle button
 	vimMode := NewVIMMode(state)
@@ -222,7 +220,7 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 				container.NewHBox(themeToggleBtn, helpBtn, vimBtn, welcomeBtn),
 			),
 			nil, nil, nil,
-			nav,
+			container.NewVScroll(navContainer),
 		),
 		contentArea,
 	)
