@@ -1,0 +1,23 @@
+		// Call backend heat check - prepare request
+		positions, _ := state.db.GetOpenPositions()
+		openPositions := make([]domain.Position, len(positions))
+		for i, p := range positions {
+			openPositions[i] = domain.Position{
+				Ticker:      p.Ticker,
+				Bucket:      p.Bucket,
+				RiskDollars: p.RiskDollars,
+				UnitsOpen:   p.Shares,
+				Status:      "Open",
+			}
+		}
+
+		heatReq := domain.HeatRequest{
+			Equity:           equity,
+			HeatCapPct:       portfolioCap / 100.0,
+			BucketHeatCapPct: bucketCap / 100.0,
+			AddRiskDollars:   risk,
+			AddBucket:        bucket,
+			OpenPositions:    openPositions,
+		}
+
+		result, err := domain.CalculateHeat(heatReq)

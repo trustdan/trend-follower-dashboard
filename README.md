@@ -3,10 +3,34 @@
 **TF = Trend Following** - Systematic Donchian breakout system following Ed Seykota/Turtle Trader principles
 
 **Created:** October 29, 2025
-**Status:** 🚀 Backend Ready | UI Shell Built | Features WIP
+**Status:** 🚀 Backend Ready | Native GUI Complete!
 **Backend:** ✅ 100% Functional (tf-engine in Go)
-**Frontend:** 🚧 Shell Complete (Header, Nav, Theme) - Core Screens WIP
-**Installer:** 🚧 Phase 1 Complete (Step 26)
+**Frontend:** ✅ Native Fyne GUI with all 7 screens
+**Binary:** `ui/tf-gui.exe` (49MB standalone)
+
+---
+
+## 🚀 Quick Start
+
+**Run the native GUI:**
+```powershell
+cd ui
+.\tf-gui.exe
+```
+
+The application will:
+1. Initialize the database if needed (`trading.db`)
+2. Open with the Dashboard screen
+3. Show navigation menu with all 7 screens
+
+**First time setup:**
+1. Visit Dashboard to see current settings
+2. Use Scanner to import FINVIZ candidates
+3. Use Checklist to evaluate trades
+4. Use Position Sizing to calculate shares/contracts
+5. Use Heat Check to verify portfolio limits
+
+See [ui/README.md](ui/README.md) for full GUI documentation.
 
 ---
 
