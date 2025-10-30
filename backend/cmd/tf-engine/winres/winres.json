@@ -2,8 +2,12 @@
   "RT_GROUP_ICON": {
     "APP": {
       "0000": [
-        "../../../assets/trend_following_icon.png",
-        "../../../assets/trend_following_icon_16.png"
+        "../../../assets/icon_simple_256.png",
+        "../../../assets/icon_simple_128.png",
+        "../../../assets/icon_simple_64.png",
+        "../../../assets/icon_simple_48.png",
+        "../../../assets/icon_simple_32.png",
+        "../../../assets/icon_simple_16.png"
       ]
     }
   },

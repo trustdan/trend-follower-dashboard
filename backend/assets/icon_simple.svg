@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark blue background - no rounded corners -->
+  <rect x="0" y="0" width="256" height="256" fill="#1e3a8a"/>
+
+  <!-- Large bold upward arrow - bright green for visibility -->
+  <polygon points="128,40 220,180 160,180 160,240 96,240 96,180 36,180" fill="#10b981" stroke="#059669" stroke-width="4"/>
+</svg>
