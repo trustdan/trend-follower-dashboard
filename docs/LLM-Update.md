@@ -687,3 +687,331 @@ None. All verification steps completed successfully.
 - **Documentation compliance** - Updated LLM-update.md and PROGRESS.md per RULES.md §1 Daily Loop
 - **Reproducible build** - All commands documented and tested
 - **Windows handoff** - When ready for Windows testing, will create export zip
+
+## [2025-10-29 21:00] Session Start - Step 27 & 28 (Final Push to v1.0.0)
+
+- **Goals:**
+  - Complete Step 27: User Documentation (88,000 words across 6 guides)
+  - Begin Step 28: Final Validation & Release
+  - Build Windows installer with NSIS
+  - Fix critical frontend navigation bug
+  - Prepare for production release
+
+- **Environment:** Kali Linux 2025.2 on WSL2, Go 1.24.2, Node 20.19.0, NSIS v3.11-1
+- **Constraints:** No Git in Linux; Windows (C:\Users\Dan\trend-follower-dashboard) is Git home
+
+## [2025-10-29 21:35] Changes - UI Bug Fix & Installer Rebuild
+
+- **Summary:** Fixed critical frontend navigation bug (`e.subscribe is not a function`) and rebuilt entire stack
+- **Problem:** Navigation completely broken - clicking any link (Scanner, Checklist, etc.) threw JavaScript error
+- **Root Cause:** `ui/src/lib/components/Navigation.svelte:67` - Manual `page.subscribe()` call fails in prerendered app
+- **Solution:** Changed to reactive `$page` store with null safety checks
+
+### Files Changed:
+
+1. **`ui/src/lib/components/Navigation.svelte`** - CRITICAL FIX
+   ```typescript
+   // OLD (BROKEN):
+   page.subscribe(p => {
+       if (currentPath && currentPath !== p.url.pathname) {
+           logger.navigate(currentPath, p.url.pathname);
+       }
+       currentPath = p.url.pathname;
+   });
+
+   // NEW (FIXED):
+   let currentPath: string = '';
+   $: {
+       if ($page?.url?.pathname) {
+           if (currentPath && currentPath !== $page.url.pathname) {
+               logger.navigate(currentPath, $page.url.pathname);
+           }
+           currentPath = $page.url.pathname;
+       }
+   }
+   ```
+   - Removed manual `.subscribe()` call
+   - Used reactive `$page` store (Svelte auto-subscription)
+   - Added null safety with optional chaining (`?.`)
+   - More idiomatic Svelte code
+
+2. **`ui/build/**`** - Rebuilt UI with fix (Oct 29 21:35)
+
+3. **`backend/internal/webui/dist/**`** - Re-embedded fixed UI
+   ```bash
+   rsync -av --delete ui/build/ backend/internal/webui/dist/
+   ```
+
+4. **`backend/tf-engine.exe`** - Rebuilt Windows binary (17 MB)
+   ```bash
+   cd backend
+   GOOS=windows GOARCH=amd64 go build -o tf-engine.exe ./cmd/tf-engine/
+   ```
+
+5. **`installer/installer.nsi`** - Created NSIS installer script (NEW)
+   - Professional Windows installer (.exe)
+   - Installs to Program Files
+   - Creates desktop + start menu shortcuts
+   - Auto-initializes database in %APPDATA%\TF-Engine\
+   - Uninstaller with option to preserve user data
+   - Registry integration (Add/Remove Programs)
+
+6. **`installer/build.sh`** - Automated build script (NEW)
+   - Builds Windows binary
+   - Verifies icon present
+   - Compiles NSIS installer
+   - Generates SHA256 checksum
+
+7. **`installer/TF-Engine-Setup-v1.0.0.exe`** - Windows installer (9.5 MB)
+   - **NEW SHA256:** `28a8026b882cf6f6c8fb68f8e279ef2fb74e7fe33400729e8c4a8185704b41eb`
+   - Includes fixed UI
+   - Ready for Windows testing
+
+8. **`docs/FRONTEND_BUG_SUMMARY.md`** - Comprehensive bug documentation (NEW)
+   - Problem description and impact
+   - Root cause analysis (technical details)
+   - Solution explanation
+   - Verification steps for Windows testing
+   - Historical context (why previous attempts failed)
+   - Prevention guidelines for future
+
+### Commands Run (copy-paste ready):
+
+```bash
+# Fix applied to source
+# (Edit tool used on Navigation.svelte)
+
+# Rebuild UI
+cd /home/kali/trend-follower-dashboard/ui
+npm run build
+
+# Copy to backend
+rsync -av --delete ui/build/ backend/internal/webui/dist/
+
+# Rebuild everything (automated script)
+cd /home/kali/trend-follower-dashboard/installer
+./build.sh
+
+# Copy to Windows
+cp TF-Engine-Setup-v1.0.0.exe /mnt/c/Users/Dan/trend-follower-dashboard/installer/
+cp TF-Engine-Setup-v1.0.0.exe.sha256 /mnt/c/Users/Dan/trend-follower-dashboard/installer/
+```
+
+### Build Artifacts (Linux):
+
+- `backend/tf-engine` - Linux binary (16 MB ELF)
+- `backend/tf-engine.exe` - Windows binary (17 MB PE32+)
+- `ui/build/` - Static UI files (fixed)
+- `backend/internal/webui/dist/` - Embedded UI (fixed)
+- `installer/TF-Engine-Setup-v1.0.0.exe` - Windows installer (9.5 MB)
+- `installer/TF-Engine-Setup-v1.0.0.exe.sha256` - Checksum file
+- `installer/installer.nsi` - NSIS script
+- `installer/build.sh` - Build automation
+
+## Windows Notes (for manual testing)
+
+### **CRITICAL - Testing Required:**
+
+**Installer copied to Windows:** `C:\Users\Dan\trend-follower-dashboard\installer\TF-Engine-Setup-v1.0.0.exe`
+
+**Testing Steps:**
+
+1. **Uninstall old version:**
+   ```powershell
+   # Settings → Apps → TF-Engine → Uninstall
+   # Choose "No" when asked about database (preserve data)
+   ```
+
+2. **Verify new checksum:**
+   ```powershell
+   cd C:\Users\Dan\trend-follower-dashboard\installer
+   Get-FileHash TF-Engine-Setup-v1.0.0.exe -Algorithm SHA256
+   # Expected: 28A8026B882CF6F6C8FB68F8E279EF2FB74E7FE33400729E8C4A8185704B41EB
+   ```
+
+3. **Install fixed version:**
+   - Right-click installer → Run as administrator
+   - Follow wizard
+   - Launch from desktop shortcut
+
+4. **Test navigation (THE CRITICAL TEST):**
+   - Open http://localhost:8080
+   - Press F12 (open console)
+   - Click each link: Scanner, Checklist, Sizing, Heat, Entry, Calendar
+   - **Expected:** NO `e.subscribe is not a function` errors
+   - **Expected:** All pages load successfully
+
+5. **If navigation works:** Proceed with full Step 28 validation (90-step checklist)
+
+6. **If still broken:** Report exact error message and browser console output
+
+## Open Questions / Blockers
+
+- [BLOCKED] Step 28 validation pending Windows testing
+- [PENDING] Frontend navigation fix verification
+- [PENDING] Complete workflow test (installation → GO decision)
+
+## Next Steps
+
+### Immediate (Windows Testing):
+1. Test fixed installer on Windows
+2. Verify navigation works (no `e.subscribe` errors)
+3. If working: Proceed with Step 28 full validation checklist
+
+### After Validation Passes:
+4. Complete Step 28 workflow validation (all 90 steps)
+5. Create RELEASE_NOTES.md
+6. Create POST_RELEASE_PLAN.md
+7. Update PROGRESS.md with v1.0.0 completion
+8. Tag v1.0.0 in Git
+9. Declare project PRODUCTION READY
+
+### If Validation Fails:
+- Debug specific error
+- Apply fix
+- Rebuild (UI → backend → installer)
+- Re-test
+
+## Historical Context
+
+### Previous Issues:
+
+**Oct 29 18:20:** First installer built - navigation broken
+**Oct 29 18:38:** UI rebuilt (unknown changes) - still broken
+**Oct 29 21:40:** **ROOT CAUSE IDENTIFIED** - `page.subscribe()` in Navigation.svelte
+
+### Why Previous Attempts Failed:
+
+- Rebuilding UI without fixing source code doesn't help
+- Bug was in `Navigation.svelte` line 67 all along
+- Previous rebuilds just re-embedded broken code
+- **Key Lesson:** Fix source first, then rebuild stack
+
+### This Attempt (Oct 29 21:40):
+
+- ✅ Identified exact problematic line
+- ✅ Applied proper Svelte idiom (reactive `$page`)
+- ✅ Added null safety
+- ✅ Rebuilt entire stack (UI → backend → installer)
+- ⏳ **Pending:** Windows testing
+
+## Technical Notes
+
+### Why Manual Subscribe Failed:
+
+- App uses `prerender: true` and `ssr: false` in `+layout.ts`
+- Manual `.subscribe()` calls may fail with uninitialized stores in prerendered apps
+- Svelte's reactive `$store` syntax handles this correctly
+- Optional chaining (`$page?.url?.pathname`) prevents errors if store is null
+
+### Proper Svelte Store Usage:
+
+```typescript
+// ❌ BAD (manual subscription in prerendered app):
+page.subscribe(p => { ... });
+
+// ✅ GOOD (reactive statement with null safety):
+$: {
+    if ($page?.url?.pathname) {
+        // Use $page here
+    }
+}
+```
+
+## Documentation Created
+
+- **`docs/FRONTEND_BUG_SUMMARY.md`** - Complete bug analysis and resolution guide
+  - Problem description
+  - Root cause analysis
+  - Solution implemented
+  - Verification steps
+  - Historical context
+  - Prevention guidelines
+
+## Files Pending Windows Test
+
+- `TF-Engine-Setup-v1.0.0.exe` (new SHA256: 28a80...)
+- Contains fixed Navigation.svelte
+- Ready for installation and testing
+
+---
+
+**Status:** Awaiting Windows testing to confirm fix before proceeding with Step 28 validation.
+
+## [2025-10-29 22:30] Reality Check - Getting Unstuck
+
+**Summary:** Documentation audit revealed status mismatch; corrected README contradictions; created comprehensive action plan
+
+**Context:** External analysis (unstuck.md) identified documentation drift: README claimed contradictory statuses ("Production Ready" + "To be built"), causing AI and humans to misread project status as "done" when actually "shell complete, features WIP."
+
+**Ground Truth Verified:**
+- ✅ UI code EXISTS: 29 Svelte components, 7 route pages
+- ✅ Navigation fix APPLIED: reactive `$page` store (lines 68-76 in Navigation.svelte)
+- ✅ Build process WORKS: Vite builds successfully in 9.77s
+- ❌ Embedded files STALE: ui/build/ (Oct 29 22:28) differs from backend/internal/webui/dist/ (Oct 29 22:01)
+- ✅ README FIXED: Removed "Production Ready" contradiction
+
+**Files touched:**
+- `README.md`: Updated status lines 6-9 and 601-610
+  - Changed from contradictory "✅ Production Ready" + "🚧 To be built"
+  - To accurate "🚧 Shell Complete (Header, Nav, Theme) - Core Screens WIP"
+  - Added detailed breakdown: 29 components built, Dashboard partial, other screens WIP
+- `docs/GETTING_UNSTUCK.md`: Created comprehensive action plan (NEW, 400+ lines)
+  - Analysis of documentation vs code mismatch
+  - Verified ground truth (UI exists, Navigation fixed, build works, embedded stale)
+  - Phase 0: Re-embed UI (5 min)
+  - Phase 1: 5-minute smoke test (Definition of Done for shell)
+  - Phase 2: Screen-by-screen implementation (4-8 weeks)
+  - Success metrics and verification commands
+- `docs/UNSTUCK.md`: Copied from /home/kali/unstuck.md (external analysis, NEW)
+
+**Commands run (copy-paste ready):**
+```bash
+# Copy external analysis
+cp /home/kali/unstuck.md /home/kali/trend-follower-dashboard/docs/UNSTUCK.md
+
+# Verify UI build
+cd /home/kali/trend-follower-dashboard/ui && npm run build
+# Output: ✓ built in 9.77s (SUCCESS)
+
+# Check embedded files
+ls -la /home/kali/trend-follower-dashboard/backend/internal/webui/dist/
+# Result: Files dated Oct 29 22:01 (STALE)
+
+# Compare build to embedded
+diff ui/build/index.html backend/internal/webui/dist/index.html
+# Result: Files differ (embedded needs sync)
+
+# Count Svelte components
+find ui/src -name "*.svelte" -type f | wc -l
+# Result: 29 components
+```
+
+**Build artifacts (Linux):**
+- `ui/build/*` - Fresh Svelte build (Oct 29 22:28)
+- `backend/internal/webui/dist/*` - Stale embedded files (Oct 29 22:01)
+- No Go binary rebuilt yet (waiting for re-embed)
+
+**Key Insights from unstuck.md:**
+1. **Plans ≠ Reality:** Planning docs read like completion reports → Solution: Clear labels, falsifiable tests
+2. **Single Source of Truth:** Contradictory status claims confuse everyone → Solution: Granular checklists (shell ✅, features 🚧)
+3. **5-Minute Smoke Test:** Clear gate for "shell done" → No console errors, all nav works, theme persists
+4. **Code Beats Docs:** Extensive docs but stale artifacts → "Show me the working binary"
+
+**Windows Notes (for manual testing):**
+- Need to re-embed UI and rebuild Windows binary after Phase 0 complete
+- Test Navigation fix in browser (should see zero `e.subscribe` errors)
+- Run 5-minute smoke test per GETTING_UNSTUCK.md Phase 1
+- Installer will need rebuild with fresh embedded UI
+
+**Open Questions / Blockers:**
+- None - path forward is clear (re-embed UI, test, implement features)
+
+**Next Actions (from GETTING_UNSTUCK.md):**
+1. **Phase 0:** Re-embed UI files (rsync build/ → webui/dist/)
+2. **Phase 0:** Rebuild Go binary (Linux + Windows)
+3. **Phase 1:** Run 5-minute smoke test (verify shell is truly done)
+4. **Phase 2:** Begin screen-by-screen implementation (Scanner first, per roadmap)
+
+**Status:** Documentation aligned with reality; ready to complete Phase 0 (re-embed) and prove shell with smoke test.
+

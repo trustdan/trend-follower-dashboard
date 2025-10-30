@@ -63,13 +63,17 @@
 		}
 	];
 
-	let currentPath: string;
-	page.subscribe(p => {
-		if (currentPath && currentPath !== p.url.pathname) {
-			logger.navigate(currentPath, p.url.pathname);
+	let currentPath: string = '';
+
+	// Use reactive statement instead of manual subscribe
+	$: {
+		if ($page?.url?.pathname) {
+			if (currentPath && currentPath !== $page.url.pathname) {
+				logger.navigate(currentPath, $page.url.pathname);
+			}
+			currentPath = $page.url.pathname;
 		}
-		currentPath = p.url.pathname;
-	});
+	}
 
 	$: isActive = (path: string) => {
 		if (path === '/') {

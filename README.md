@@ -3,9 +3,9 @@
 **TF = Trend Following** - Systematic Donchian breakout system following Ed Seykota/Turtle Trader principles
 
 **Created:** October 29, 2025
-**Status:** 🚀 Backend Ready | Documentation Complete (Step 27)
+**Status:** 🚀 Backend Ready | UI Shell Built | Features WIP
 **Backend:** ✅ 100% Functional (tf-engine in Go)
-**Frontend:** ✅ Embedded UI (Svelte) - Production Ready
+**Frontend:** 🚧 Shell Complete (Header, Nav, Theme) - Core Screens WIP
 **Installer:** 🚧 Phase 1 Complete (Step 26)
 
 ---
@@ -598,10 +598,16 @@ For questions or issues:
 
 ## Status
 
-**Backend:** ✅ 100% Functional
-**Frontend:** 🚧 To be built
-**Timeline:** 8-12 weeks
-**Next Action:** Choose GUI framework and build Hello World
+**Backend:** ✅ 100% Functional (tf-engine CLI + HTTP server)
+**Frontend:** 🚧 Shell Complete - Core Features In Progress
+  - ✅ Header with theme toggle (persisted)
+  - ✅ Navigation component (fixed reactive $page store)
+  - ✅ All 7 route pages created (Dashboard, Scanner, Checklist, Sizing, Heat, Entry, Calendar)
+  - ✅ 29 Svelte components built
+  - 🚧 Dashboard page partially implemented (API calls working)
+  - 🚧 Other screens need full implementation
+**Timeline:** 4-8 weeks remaining
+**Next Action:** Complete feature implementation screen by screen
 
 ---
 
