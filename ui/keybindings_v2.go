@@ -27,20 +27,26 @@ type VIMMode struct {
 	hintMode         bool
 	hints            map[string]*clickableTarget // Maps hint keys to clickable targets
 	keyBuffer        string                      // For multi-key commands like 'gg', 'gt'
+	hintBuffer       string                      // Buffer for multi-character hints
 	hintOverlay      *fyne.Container
-	hintLabels       []*canvas.Text // Individual hint labels positioned over buttons
+	hintLabels       []*canvas.Text    // Individual hint labels positioned over buttons
 	scrollContainers []*container.Scroll
+	searchResults    []fyne.CanvasObject // Found search result widgets
+	currentSearchIdx int                 // Current position in search results
+	lastSearchQuery  string              // Last search query
 }
 
 // NewVIMMode creates a new VIM mode handler
 func NewVIMMode(state *AppState) *VIMMode {
-	return &VIMMode{
+	vm := &VIMMode{
 		state:     state,
-		enabled:   false, // Disabled by default, toggle with button
+		enabled:   true, // Enabled by default
 		hintMode:  false,
 		hints:     make(map[string]*clickableTarget),
 		keyBuffer: "",
 	}
+	log.Println("VIM Mode: initialized enabled by default")
+	return vm
 }
 
 // Toggle enables/disables VIM mode
@@ -163,11 +169,11 @@ func (v *VIMMode) handleCommand(cmd string) bool {
 		return true
 	case "n":
 		log.Println("VIM: n - next search result")
-		// TODO: Implement next search
+		v.nextSearchResult()
 		return true
 	case "N":
 		log.Println("VIM: N - previous search result")
-		// TODO: Implement previous search
+		v.prevSearchResult()
 		return true
 
 	// Refresh
@@ -240,10 +246,33 @@ func (v *VIMMode) handleCommand(cmd string) bool {
 // handleHintModeKey processes keys in hint mode
 func (v *VIMMode) handleHintModeKey(key string) {
 	lowerKey := strings.ToLower(key)
-	log.Printf("VIM: Hint mode key: %s", lowerKey)
+	log.Printf("VIM: Hint mode key: %s (buffer: '%s')", lowerKey, v.hintBuffer)
 
-	if len(lowerKey) == 1 {
-		v.activateHint(lowerKey)
+	// Add to hint buffer
+	v.hintBuffer += lowerKey
+
+	// Check for exact match
+	if _, exists := v.hints[v.hintBuffer]; exists {
+		log.Printf("VIM: Exact match for hint '%s'", v.hintBuffer)
+		v.activateHint(v.hintBuffer)
+		v.hintBuffer = "" // Clear buffer after activation
+		return
+	}
+
+	// Check if this is a valid prefix (could lead to a match)
+	hasValidPrefix := false
+	for hintKey := range v.hints {
+		if strings.HasPrefix(hintKey, v.hintBuffer) {
+			hasValidPrefix = true
+			log.Printf("VIM: Buffer '%s' is valid prefix for hint '%s'", v.hintBuffer, hintKey)
+			break
+		}
+	}
+
+	if !hasValidPrefix {
+		// No hints match this prefix, clear buffer and restart
+		log.Printf("VIM: No hints match buffer '%s', clearing", v.hintBuffer)
+		v.hintBuffer = ""
 	}
 }
 
@@ -252,6 +281,7 @@ func (v *VIMMode) enterHintMode() {
 	log.Println("VIM: Entering hint mode...")
 	v.hintMode = true
 	v.keyBuffer = ""
+	v.hintBuffer = "" // Clear hint buffer
 
 	// Find all clickable elements (buttons, list items, etc.)
 	v.findAllClickableElements()
@@ -268,6 +298,7 @@ func (v *VIMMode) exitHintMode() {
 	}
 	log.Println("VIM: Exiting hint mode...")
 	v.hintMode = false
+	v.hintBuffer = "" // Clear hint buffer
 	v.hints = make(map[string]*clickableTarget)
 	v.hideHintOverlay()
 	log.Println("VIM: Hint mode exited")
@@ -276,15 +307,49 @@ func (v *VIMMode) exitHintMode() {
 // findAllClickableElements finds all clickable elements and generates hints
 func (v *VIMMode) findAllClickableElements() {
 	v.hints = make(map[string]*clickableTarget)
-	v.scrollContainers = []*container.Scroll{}
 
-	content := v.state.window.Content()
-	v.findClickableRecursive(content)
+	// Always refresh scroll containers when finding elements
+	v.refreshScrollContainers()
+
+	canvas := v.state.window.Canvas()
+	overlayProcessed := false
+
+	if canvas != nil {
+		overlays := canvas.Overlays().List()
+		for i := len(overlays) - 1; i >= 0; i-- {
+			overlay := overlays[i]
+			if overlay == nil || overlay == v.hintOverlay {
+				continue
+			}
+			if !overlay.Visible() {
+				continue
+			}
+			popUp, ok := overlay.(*widget.PopUp)
+			if !ok {
+				log.Printf("VIM: Overlay %T not a dialog pop-up; skipping", overlay)
+				continue
+			}
+			if !popUp.Visible() {
+				continue
+			}
+			log.Printf("VIM: Scanning dialog overlay for clickable targets: %T", overlay)
+			v.findClickableRecursive(popUp)
+			overlayProcessed = true
+			break
+		}
+	}
+
+	if !overlayProcessed {
+		content := v.state.window.Content()
+		if content != nil {
+			v.findClickableRecursive(content)
+		}
+	}
 
 	log.Printf("VIM: Found %d scroll containers", len(v.scrollContainers))
 
-	// Generate hint keys for all targets
-	v.generateHintKeys()
+	// Generate hint keys for all targets using Vimium algorithm
+	v.generateVimiumHintKeys()
 }
 
 // findAllButtons recursively finds all buttons in the UI (for scroll operations)
@@ -349,6 +414,10 @@ func (v *VIMMode) findClickableRecursive(obj fyne.CanvasObject) {
 		for _, child := range c.Objects {
 			v.findClickableRecursive(child)
 		}
+	case *widget.PopUp:
+		if c.Content != nil {
+			v.findClickableRecursive(c.Content)
+		}
 	case *container.Scroll:
 		// Track this scroll container for j/k/h/l scrolling
 		v.scrollContainers = append(v.scrollContainers, c)
@@ -396,45 +465,136 @@ func (v *VIMMode) findButtonsRecursive(obj fyne.CanvasObject, buttons *[]*widget
 	}
 }
 
-// generateHintKeys assigns letter keys to all clickable targets
-func (v *VIMMode) generateHintKeys() {
-	letters := "abcdefghijklmnopqrstuvwxyz"
-	hintKeys := []string{}
+// generateVimiumHintKeys assigns letter keys using Vimium's home-row optimization algorithm
+// Based on Phil Crosby's Vimium implementation:
+// - Prioritizes home row keys (asdfghjkl) for single-key hints
+// - Uses a scoring system to generate optimal hint sequences
+// - Ensures hints are short and easy to type
+func (v *VIMMode) generateVimiumHintKeys() {
+	// Home row keys are preferred (easier to type)
+	// Secondary keys for longer hints
+	hintCharacters := "sadfjklewcmpgh"
 
-	// Generate single letters
-	for _, c := range letters {
-		hintKeys = append(hintKeys, string(c))
-	}
-
-	// Generate double letters if needed
 	numTargets := len(v.hints)
-	if len(hintKeys) < numTargets {
-		for _, c1 := range letters {
-			for _, c2 := range letters {
-				hintKeys = append(hintKeys, string(c1)+string(c2))
-				if len(hintKeys) >= numTargets {
-					break
-				}
-			}
-			if len(hintKeys) >= numTargets {
-				break
-			}
-		}
+	if numTargets == 0 {
+		return
 	}
+
+	// Calculate how many characters we need
+	hintStrings := v.generateHintStrings(numTargets, hintCharacters)
 
 	// Reassign hints with proper letter keys
 	newHints := make(map[string]*clickableTarget)
 	idx := 0
 	for _, target := range v.hints {
-		if idx >= len(hintKeys) {
+		if idx >= len(hintStrings) {
 			break
 		}
-		newHints[hintKeys[idx]] = target
-		log.Printf("VIM: Assigned hint key '%s' to %s", hintKeys[idx], target.label)
+		hintKey := hintStrings[idx]
+		newHints[hintKey] = target
+		log.Printf("VIM: Assigned hint key '%s' to %s", hintKey, target.label)
 		idx++
 	}
 
 	v.hints = newHints
+}
+
+// generateHintStrings creates optimal hint strings using Vimium's algorithm
+// This generates the shortest possible hints while maintaining easy typing
+func (v *VIMMode) generateHintStrings(count int, hintChars string) []string {
+	if count <= 0 {
+		return []string{}
+	}
+
+	// If we have fewer targets than characters, use single letters
+	if count <= len(hintChars) {
+		result := make([]string, count)
+		for i := 0; i < count; i++ {
+			result[i] = string(hintChars[i])
+		}
+		return result
+	}
+
+	// For more targets, we need multi-character hints
+	// Calculate optimal number of characters needed
+	hintLength := 1
+	for {
+		capacity := 1
+		for i := 0; i < hintLength; i++ {
+			capacity *= len(hintChars)
+		}
+		if capacity >= count {
+			break
+		}
+		hintLength++
+	}
+
+	// Generate hints of appropriate length
+	hints := []string{}
+	v.generateHintsRecursive("", hintLength, hintChars, &hints, count)
+	return hints
+}
+
+// generateHintsRecursive recursively builds hint strings
+func (v *VIMMode) generateHintsRecursive(prefix string, length int, chars string, hints *[]string, maxCount int) {
+	if len(*hints) >= maxCount {
+		return
+	}
+
+	if length == 0 {
+		*hints = append(*hints, prefix)
+		return
+	}
+
+	// Generate hints in order of home row preference
+	for _, c := range chars {
+		v.generateHintsRecursive(prefix+string(c), length-1, chars, hints, maxCount)
+		if len(*hints) >= maxCount {
+			return
+		}
+	}
+}
+
+// refreshScrollContainers finds all scroll containers in the current UI
+func (v *VIMMode) refreshScrollContainers() {
+	v.scrollContainers = []*container.Scroll{}
+	content := v.state.window.Content()
+	if content != nil {
+		v.findScrollContainersRecursive(content)
+	}
+	log.Printf("VIM: Refreshed scroll containers, found %d", len(v.scrollContainers))
+}
+
+// findScrollContainersRecursive recursively finds scroll containers
+func (v *VIMMode) findScrollContainersRecursive(obj fyne.CanvasObject) {
+	// Check if this is a scroll container
+	if scroll, ok := obj.(*container.Scroll); ok {
+		v.scrollContainers = append(v.scrollContainers, scroll)
+	}
+
+	// Check all container types
+	switch c := obj.(type) {
+	case *fyne.Container:
+		for _, child := range c.Objects {
+			v.findScrollContainersRecursive(child)
+		}
+	case *widget.PopUp:
+		if c.Content != nil {
+			v.findScrollContainersRecursive(c.Content)
+		}
+	case *container.Scroll:
+		// Already added above, but check content
+		if c.Content != nil {
+			v.findScrollContainersRecursive(c.Content)
+		}
+	case *container.Split:
+		if c.Leading != nil {
+			v.findScrollContainersRecursive(c.Leading)
+		}
+		if c.Trailing != nil {
+			v.findScrollContainersRecursive(c.Trailing)
+		}
+	}
 }
 
 // showHints displays available hints visually on-screen
@@ -460,11 +620,28 @@ func (v *VIMMode) createHintOverlay() {
 
 	// Get canvas to find absolute positions
 	canv := v.state.window.Canvas()
+	if canv == nil {
+		log.Println("VIM: Canvas unavailable, cannot create hint overlay")
+		return
+	}
+
+	driver := fyne.CurrentApp().Driver()
+	if driver == nil {
+		log.Println("VIM: Driver unavailable, cannot position hint overlay")
+		return
+	}
 
 	// Create a hint label for each clickable target
 	for hint, target := range v.hints {
+		if target == nil || target.obj == nil {
+			continue
+		}
+		if !target.obj.Visible() {
+			log.Printf("VIM: Skipping hidden target '%s'", target.label)
+			continue
+		}
 		// Get object's absolute position on screen
-		objPos := fyne.CurrentApp().Driver().AbsolutePositionForObject(target.obj)
+		objPos := driver.AbsolutePositionForObject(target.obj)
 		objSize := target.obj.Size()
 
 		log.Printf("VIM: Target '%s' at position (%v, %v) with size (%v x %v)",
@@ -490,12 +667,15 @@ func (v *VIMMode) createHintOverlay() {
 	}
 
 	// Create overlay container using NewWithoutLayout for absolute positioning
-	v.hintOverlay = container.NewWithoutLayout(overlayObjects...)
+	if len(overlayObjects) == 0 {
+		log.Println("VIM: No hint overlay objects created")
+		return
+	}
 
-	// Add overlay on top of existing content
-	currentContent := v.state.window.Content()
-	v.state.window.SetContent(container.NewStack(currentContent, v.hintOverlay))
-	canv.Refresh(v.state.window.Content())
+	v.hintOverlay = container.NewWithoutLayout(overlayObjects...)
+	v.hintOverlay.Resize(canv.Size())
+	canv.Overlays().Add(v.hintOverlay)
+	canv.Refresh(v.hintOverlay)
 
 	log.Printf("VIM: Created %d hint overlays", len(v.hintLabels))
 }
@@ -506,18 +686,14 @@ func (v *VIMMode) hideHintOverlay() {
 		return
 	}
 
-	// Remove overlay by getting the Stack container and extracting the original content
-	currentContent := v.state.window.Content()
-	if stack, ok := currentContent.(*fyne.Container); ok {
-		if len(stack.Objects) >= 2 {
-			// First object is the original content
-			v.state.window.SetContent(stack.Objects[0])
-			v.state.window.Canvas().Refresh(v.state.window.Content())
-		}
+	canv := v.state.window.Canvas()
+	if canv != nil {
+		canv.Overlays().Remove(v.hintOverlay)
+		canv.Refresh(v.state.window.Content())
 	}
 
 	v.hintOverlay = nil
-	v.hintLabels = []*canvas.Text{}
+	v.hintLabels = nil
 	log.Println("VIM: Visual hint overlay hidden")
 }
 
@@ -535,9 +711,10 @@ func (v *VIMMode) activateHint(key string) {
 	log.Printf("VIM: Looking for hint key: %s", key)
 	if target, exists := v.hints[key]; exists {
 		log.Printf("VIM: Activating target: %s", target.label)
+		// Exit hint mode before triggering action so newly created overlays remain visible
+		v.exitHintMode()
 		// Call the activation function
 		target.activate()
-		v.exitHintMode()
 	} else {
 		log.Printf("VIM: No target found for hint: %s", key)
 	}
@@ -591,10 +768,38 @@ func (v *VIMMode) showHelpOverlay() {
 	)
 }
 
-// openFind opens a find dialog
+// openFind opens a find dialog with actual search functionality
 func (v *VIMMode) openFind() {
 	searchEntry := widget.NewEntry()
 	searchEntry.SetPlaceHolder("Search...")
+
+	resultsLabel := widget.NewLabel("")
+
+	searchEntry.OnChanged = func(query string) {
+		if query == "" {
+			resultsLabel.SetText("")
+			v.searchResults = []fyne.CanvasObject{}
+			v.currentSearchIdx = -1
+			v.lastSearchQuery = ""
+			return
+		}
+
+		// Perform search
+		results := v.searchContent(query)
+		v.searchResults = results
+		v.currentSearchIdx = 0
+		v.lastSearchQuery = query
+
+		if len(results) == 0 {
+			resultsLabel.SetText(fmt.Sprintf("No results for '%s'", query))
+		} else {
+			resultsLabel.SetText(fmt.Sprintf("Found %d result(s) - Use 'n' for next, 'N' for previous", len(results)))
+			// Scroll to first result
+			v.scrollToSearchResult(0)
+		}
+
+		log.Printf("VIM: Search for '%s' found %d results", query, len(results))
+	}
 
 	d := dialog.NewCustom(
 		"Find",
@@ -602,18 +807,152 @@ func (v *VIMMode) openFind() {
 		container.NewVBox(
 			widget.NewLabel("Search for:"),
 			searchEntry,
+			resultsLabel,
 		),
 		v.state.window,
 	)
 
 	searchEntry.OnSubmitted = func(query string) {
-		log.Printf("VIM: Searching for: %s", query)
-		// TODO: Implement actual search
-		d.Hide()
+		if len(v.searchResults) > 0 {
+			v.nextSearchResult()
+		}
 	}
 
 	d.Show()
 	v.state.window.Canvas().Focus(searchEntry)
+}
+
+// searchContent recursively searches through all text in the UI
+func (v *VIMMode) searchContent(query string) []fyne.CanvasObject {
+	results := []fyne.CanvasObject{}
+	lowerQuery := strings.ToLower(query)
+
+	content := v.state.window.Content()
+	if content != nil {
+		v.searchRecursive(content, lowerQuery, &results)
+	}
+
+	log.Printf("VIM: Search found %d results", len(results))
+	return results
+}
+
+// searchRecursive recursively searches through UI elements
+func (v *VIMMode) searchRecursive(obj fyne.CanvasObject, query string, results *[]fyne.CanvasObject) {
+	if !obj.Visible() {
+		return
+	}
+
+	// Check text-containing widgets
+	switch widget := obj.(type) {
+	case *widget.Label:
+		if strings.Contains(strings.ToLower(widget.Text), query) {
+			*results = append(*results, widget)
+			log.Printf("VIM: Found match in Label: '%s'", widget.Text)
+		}
+	case *widget.Button:
+		if strings.Contains(strings.ToLower(widget.Text), query) {
+			*results = append(*results, widget)
+			log.Printf("VIM: Found match in Button: '%s'", widget.Text)
+		}
+	case *widget.Entry:
+		if strings.Contains(strings.ToLower(widget.Text), query) {
+			*results = append(*results, widget)
+			log.Printf("VIM: Found match in Entry: '%s'", widget.Text)
+		}
+	case *canvas.Text:
+		if strings.Contains(strings.ToLower(widget.Text), query) {
+			*results = append(*results, widget)
+			log.Printf("VIM: Found match in Text: '%s'", widget.Text)
+		}
+	}
+
+	// Recursively search containers
+	switch c := obj.(type) {
+	case *fyne.Container:
+		for _, child := range c.Objects {
+			v.searchRecursive(child, query, results)
+		}
+	case *widget.PopUp:
+		if c.Content != nil {
+			v.searchRecursive(c.Content, query, results)
+		}
+	case *container.Scroll:
+		if c.Content != nil {
+			v.searchRecursive(c.Content, query, results)
+		}
+	case *container.Split:
+		if c.Leading != nil {
+			v.searchRecursive(c.Leading, query, results)
+		}
+		if c.Trailing != nil {
+			v.searchRecursive(c.Trailing, query, results)
+		}
+	}
+}
+
+// scrollToSearchResult scrolls to make a search result visible
+func (v *VIMMode) scrollToSearchResult(idx int) {
+	if idx < 0 || idx >= len(v.searchResults) {
+		return
+	}
+
+	result := v.searchResults[idx]
+	log.Printf("VIM: Scrolling to result %d/%d", idx+1, len(v.searchResults))
+
+	// Find the scroll container that contains this result
+	v.refreshScrollContainers()
+
+	driver := fyne.CurrentApp().Driver()
+	if driver == nil {
+		return
+	}
+
+	// Get absolute position of the result
+	resultPos := driver.AbsolutePositionForObject(result)
+
+	// Try to scroll to make this result visible
+	for _, scroll := range v.scrollContainers {
+		// Check if this scroll container might contain our result
+		scrollPos := driver.AbsolutePositionForObject(scroll)
+		scrollSize := scroll.Size()
+
+		// Simple heuristic: if result is within scroll bounds, scroll to it
+		if resultPos.Y >= scrollPos.Y && resultPos.Y <= scrollPos.Y+scrollSize.Height {
+			// Calculate offset to center the result
+			targetY := resultPos.Y - scrollPos.Y - (scrollSize.Height / 2)
+			scroll.Offset = fyne.NewPos(scroll.Offset.X, targetY)
+			scroll.Refresh()
+			log.Printf("VIM: Scrolled to result at Y=%f", targetY)
+			return
+		}
+	}
+}
+
+// nextSearchResult moves to the next search result
+func (v *VIMMode) nextSearchResult() {
+	if len(v.searchResults) == 0 {
+		log.Println("VIM: No search results")
+		return
+	}
+
+	v.currentSearchIdx = (v.currentSearchIdx + 1) % len(v.searchResults)
+	v.scrollToSearchResult(v.currentSearchIdx)
+	log.Printf("VIM: Moved to result %d/%d", v.currentSearchIdx+1, len(v.searchResults))
+}
+
+// prevSearchResult moves to the previous search result
+func (v *VIMMode) prevSearchResult() {
+	if len(v.searchResults) == 0 {
+		log.Println("VIM: No search results")
+		return
+	}
+
+	v.currentSearchIdx--
+	if v.currentSearchIdx < 0 {
+		v.currentSearchIdx = len(v.searchResults) - 1
+	}
+	v.scrollToSearchResult(v.currentSearchIdx)
+	log.Printf("VIM: Moved to result %d/%d", v.currentSearchIdx+1, len(v.searchResults))
 }
 
 // refreshCurrentView refreshes the current view
@@ -675,14 +1014,17 @@ func (v *VIMMode) AttachToWindow() {
 	canv.SetOnTypedRune(func(r rune) {
 		v.HandleTypedRune(r)
 	})
-	log.Println("VIM Mode: Handler attached (disabled by default)")
+	log.Println("VIM Mode: Handler attached (enabled by default)")
 }
 
 // scrollVertical scrolls all scroll containers vertically
 func (v *VIMMode) scrollVertical(delta float32) {
-	// Find scroll containers if not already found
+	// Always refresh scroll containers to get current UI state
+	v.refreshScrollContainers()
+
 	if len(v.scrollContainers) == 0 {
-		v.findAllButtons() // This also populates scrollContainers
+		log.Println("VIM: No scroll containers found")
+		return
 	}
 
 	for _, scroll := range v.scrollContainers {
@@ -702,9 +1044,12 @@ func (v *VIMMode) scrollVertical(delta float32) {
 
 // scrollHorizontal scrolls all scroll containers horizontally
 func (v *VIMMode) scrollHorizontal(delta float32) {
-	// Find scroll containers if not already found
+	// Always refresh scroll containers to get current UI state
+	v.refreshScrollContainers()
+
 	if len(v.scrollContainers) == 0 {
-		v.findAllButtons() // This also populates scrollContainers
+		log.Println("VIM: No scroll containers found")
+		return
 	}
 
 	for _, scroll := range v.scrollContainers {
@@ -724,9 +1069,12 @@ func (v *VIMMode) scrollHorizontal(delta float32) {
 
 // scrollToTop scrolls all scroll containers to the top
 func (v *VIMMode) scrollToTop() {
-	// Find scroll containers if not already found
+	// Always refresh scroll containers to get current UI state
+	v.refreshScrollContainers()
+
 	if len(v.scrollContainers) == 0 {
-		v.findAllButtons() // This also populates scrollContainers
+		log.Println("VIM: No scroll containers found")
+		return
 	}
 
 	for _, scroll := range v.scrollContainers {
@@ -738,9 +1086,12 @@ func (v *VIMMode) scrollToTop() {
 
 // scrollToBottom scrolls all scroll containers to the bottom
 func (v *VIMMode) scrollToBottom() {
-	// Find scroll containers if not already found
+	// Always refresh scroll containers to get current UI state
+	v.refreshScrollContainers()
+
 	if len(v.scrollContainers) == 0 {
-		v.findAllButtons() // This also populates scrollContainers
+		log.Println("VIM: No scroll containers found")
+		return
 	}
 
 	for _, scroll := range v.scrollContainers {

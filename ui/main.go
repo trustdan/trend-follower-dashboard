@@ -133,8 +133,8 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 	helpBtn.Importance = widget.HighImportance
 
 	// Create VIM mode toggle button
-	vimBtn := widget.NewButton("VIM: Off", func() {
-		// This closure will be set after vimMode is created
+	vimBtn := widget.NewButton("VIM: On", func() {
+		// Placeholder; actual handler assigned after vimMode is created
 	})
 	vimBtn.Importance = widget.HighImportance
 
@@ -202,14 +202,18 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 
 	// Initialize VIM mode and wire up the toggle button
 	vimMode := NewVIMMode(state)
-	vimBtn.OnTapped = func() {
-		vimMode.Toggle()
+	updateVIMButton := func() {
 		if vimMode.IsEnabled() {
 			vimBtn.SetText("VIM: On")
 		} else {
 			vimBtn.SetText("VIM: Off")
 		}
 	}
+	vimBtn.OnTapped = func() {
+		vimMode.Toggle()
+		updateVIMButton()
+	}
+	updateVIMButton()
 	vimMode.AttachToWindow()
 
 	// Create split container with navigation on left, content on right

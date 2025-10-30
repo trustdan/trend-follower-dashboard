@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -45,7 +44,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	fromPresetCheck := widget.NewCheck("From Preset (SIG_REQ)", nil)
 	fromPresetCheck.SetChecked(false)
 	fromPresetHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		dialog.ShowInformation("From Preset",
+		ShowStyledInformation("From Preset",
 			"Ticker came from today's FINVIZ preset scan (55-bar breakout filter).\n\n"+
 				"This ensures we're trading mechanical breakouts, not random stocks.",
 			state.window)
@@ -55,7 +54,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	trendCheck := widget.NewCheck("Trend Confirmed (RISK_REQ)", nil)
 	trendCheck.SetChecked(false)
 	trendHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		dialog.ShowInformation("Trend Confirmed",
+		ShowStyledInformation("Trend Confirmed",
 			"Trend confirmed: Long > 55-high OR Short < 55-low. Uses 2×N stop distance.\n\n"+
 				"This is the Donchian breakout filter - the core signal.",
 			state.window)
@@ -65,7 +64,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	liquidityCheck := widget.NewCheck("Liquidity OK (OPT_REQ)", nil)
 	liquidityCheck.SetChecked(false)
 	liquidityHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		dialog.ShowInformation("Liquidity OK",
+		ShowStyledInformation("Liquidity OK",
 			"Options liquidity: bid-ask < 10% of mid, OI > 100, 60-90 DTE.\n\n"+
 				"For options strategies only. Ensures you can enter and exit without slippage.",
 			state.window)
@@ -75,7 +74,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	timeframeCheck := widget.NewCheck("TV Confirm (EXIT_REQ)", nil)
 	timeframeCheck.SetChecked(false)
 	timeframeHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		dialog.ShowInformation("TV Confirm",
+		ShowStyledInformation("TV Confirm",
 			"Exit plan confirmed: 10-bar opposite Donchian OR 2×N, whichever closer.\n\n"+
 				"Know your exit BEFORE you enter. This is non-negotiable.",
 			state.window)
@@ -85,7 +84,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	earningsCheck := widget.NewCheck("Earnings OK (BEHAV_REQ)", nil)
 	earningsCheck.SetChecked(false)
 	earningsHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		dialog.ShowInformation("Earnings OK",
+		ShowStyledInformation("Earnings OK",
 			"2-minute cooloff passed, no intraday overrides, earnings blackout OK.\n\n"+
 				"The 2-minute timer prevents impulsive entries. It's intentional friction.",
 			state.window)
@@ -107,7 +106,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	regimeCheck := widget.NewCheck("Regime OK (e.g., SPY > 200SMA)", nil)
 	regimeCheck.SetChecked(false)
 	regimeHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		dialog.ShowInformation("Regime OK",
+		ShowStyledInformation("Regime OK",
 			"Market regime favorable (e.g., SPY > 200SMA for longs).\n\n"+
 				"Optional but improves quality score. Trading with the market tide.",
 			state.window)
@@ -117,7 +116,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	chaseCheck := widget.NewCheck("No Chase (< 2N above 20-EMA)", nil)
 	chaseCheck.SetChecked(false)
 	chaseHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		dialog.ShowInformation("No Chase",
+		ShowStyledInformation("No Chase",
 			"Entry not > 2N above 20-EMA (avoids chasing extended moves).\n\n"+
 				"Optional but reduces risk of buying tops. Patience pays.",
 			state.window)
@@ -127,7 +126,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	journalCheck := widget.NewCheck("Journal Entry Written", nil)
 	journalCheck.SetChecked(false)
 	journalHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		dialog.ShowInformation("Journal OK",
+		ShowStyledInformation("Journal OK",
 			"Trade plan documented: why now, profit targets, risk/reward.\n\n"+
 				"Optional but highly recommended. Writing forces clarity.",
 			state.window)
