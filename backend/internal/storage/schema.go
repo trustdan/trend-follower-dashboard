@@ -123,6 +123,82 @@ CREATE TABLE IF NOT EXISTS bucket_cooldowns (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bucket_cooldowns_bucket ON bucket_cooldowns(bucket, active);
+
+-- Trade sessions table: cohesive workflow and provenance tracking
+CREATE TABLE IF NOT EXISTS trade_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_num INTEGER GENERATED ALWAYS AS (id) STORED UNIQUE,
+    ticker TEXT NOT NULL,
+    strategy TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'MANUAL' CHECK (source IN ('MANUAL', 'PRESET', 'CUSTOM')),
+    candidate_id INTEGER,
+    preset_id INTEGER,
+    preset_name TEXT,
+    scan_date TEXT,
+    status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'EVALUATING', 'COMPLETED', 'ABANDONED')),
+    current_step TEXT NOT NULL DEFAULT 'CHECKLIST' CHECK (current_step IN ('CHECKLIST', 'SIZING', 'HEAT', 'ENTRY')),
+    checklist_completed INTEGER NOT NULL DEFAULT 0 CHECK (checklist_completed IN (0,1)),
+    checklist_banner TEXT,
+    checklist_missing_count INTEGER DEFAULT 0,
+    checklist_quality_score INTEGER DEFAULT 0,
+    checklist_completed_at DATETIME,
+    sizing_completed INTEGER NOT NULL DEFAULT 0 CHECK (sizing_completed IN (0,1)),
+    sizing_method TEXT,
+    sizing_entry_price REAL,
+    sizing_atr REAL,
+    sizing_k_multiple REAL,
+    sizing_stop_distance REAL,
+    sizing_initial_stop REAL,
+    sizing_shares INTEGER,
+    sizing_contracts INTEGER,
+    sizing_risk_dollars REAL,
+    sizing_delta REAL,
+    sizing_completed_at DATETIME,
+    heat_completed INTEGER NOT NULL DEFAULT 0 CHECK (heat_completed IN (0,1)),
+    heat_status TEXT,
+    heat_portfolio_current REAL,
+    heat_portfolio_new REAL,
+    heat_portfolio_cap REAL,
+    heat_bucket TEXT,
+    heat_bucket_current REAL,
+    heat_bucket_new REAL,
+    heat_bucket_cap REAL,
+    heat_completed_at DATETIME,
+    entry_completed INTEGER NOT NULL DEFAULT 0 CHECK (entry_completed IN (0,1)),
+    entry_decision TEXT,
+    entry_decision_id INTEGER,
+    entry_gate1_pass INTEGER,
+    entry_gate2_pass INTEGER,
+    entry_gate3_pass INTEGER,
+    entry_gate4_pass INTEGER,
+    entry_gate5_pass INTEGER,
+    entry_completed_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    FOREIGN KEY (candidate_id) REFERENCES candidates(id),
+    FOREIGN KEY (preset_id) REFERENCES presets(id),
+    FOREIGN KEY (entry_decision_id) REFERENCES decisions(id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_session_num ON trade_sessions(session_num);
+CREATE INDEX IF NOT EXISTS idx_sessions_ticker ON trade_sessions(ticker);
+CREATE INDEX IF NOT EXISTS idx_sessions_strategy ON trade_sessions(strategy);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON trade_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_sessions_created ON trade_sessions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_updated ON trade_sessions(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_active ON trade_sessions(status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_candidate ON trade_sessions(candidate_id);
+
+CREATE TRIGGER IF NOT EXISTS trg_sessions_updated_at
+AFTER UPDATE ON trade_sessions
+FOR EACH ROW
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+    UPDATE trade_sessions
+    SET updated_at = CURRENT_TIMESTAMP
+    WHERE id = NEW.id;
+END;
 `
 
 // defaultSettings contains the bootstrap configuration values

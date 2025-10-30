@@ -163,9 +163,9 @@ Gate 5: Behavior Constraints Honored
 │                    DESKTOP APPLICATION                         │
 │                                                                │
 │  ┌──────────────────────────────────────────────────────────┐ │
-│  │              SVELTE FRONTEND (Browser/WebView)           │ │
+│  │              FYNE FRONTEND (Native GUI)                  │ │
 │  │                                                          │ │
-│  │  Components:                                             │ │
+│  │  Screens:                                                │ │
 │  │  - Dashboard (Positions, Candidates, Heat)               │ │
 │  │  - FINVIZ Scanner (One-click daily scan)                 │ │
 │  │  - Candidate Import (Review & approve tickers)           │ │
@@ -176,12 +176,12 @@ Gate 5: Behavior Constraints Honored
 │  │  - Calendar View (10-week sector diversification)        │ │
 │  │  - TradingView Integration (Open charts w/ script)       │ │
 │  │                                                          │ │
-│  │  State Management: Svelte stores + localStorage          │ │
-│  │  UI Framework: SvelteKit (static adapter)                │ │
-│  │  Styling: TailwindCSS or similar (large, obvious UI)     │ │
+│  │  State Management: Direct backend calls (in-process)     │ │
+│  │  UI Framework: Fyne v2 (native Go GUI)                   │ │
+│  │  Styling: Custom theme (British Racing Green accent)     │ │
 │  └──────────────────────────────────────────────────────────┘ │
 │                           │                                    │
-│                           │ HTTP REST API (JSON)               │
+│                           │ Direct Function Calls              │
 │                           │                                    │
 │  ┌──────────────────────────────────────────────────────────┐ │
 │  │                 GO BACKEND (tf-engine)                   │ │
@@ -220,8 +220,8 @@ Gate 5: Behavior Constraints Honored
 │  └──────────────────────────────────────────────────────────┘ │
 │                                                                │
 │  Database: trading.db (SQLite, single file)                   │
-│  Deployment: Single binary (app.exe on Windows)               │
-│  Opens: Default browser to localhost:8080 OR embedded webview │
+│  Deployment: Single binary (tf-gui.exe on Windows)            │
+│  Opens: Native desktop window (no browser required)           │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -229,40 +229,36 @@ Gate 5: Behavior Constraints Honored
 
 **Backend (✅ Complete - tf-engine):**
 - Language: Go 1.24+
-- HTTP Server: Standard library or Gin/Chi
-- Database: SQLite via mattn/go-sqlite3
+- Database: SQLite via modernc.org/sqlite
 - Web Scraping: golang.org/x/net
 - Logging: Structured logging with levels (DEBUG, INFO, WARN, ERROR)
-  - Log to file: `logs/tf-engine.log` (rotated daily)
+  - Log to file: `logs/tf-gui.log` (rotated daily)
   - Log to console: Configurable verbosity
-  - Correlation IDs for request tracking
-  - Performance metrics (request duration, DB query time)
   - Feature usage tracking (which features are used, how often)
   - Error tracking (full stack traces, context)
 - Testing: Go standard testing + testify
 
-**Frontend (🚧 To Build):**
-- Language: TypeScript + Svelte
-- Framework: SvelteKit with static adapter
-- UI Library: Custom components (anti-impulsivity focused)
-- Styling: TailwindCSS + custom CSS for gradients and animations
-- Color System: Day/night mode with smooth theme toggle
-- Design Language: Modern, sleek, gradient-heavy (no flat colors)
-- State: Svelte stores + localStorage for theme preference
-- Logging: Browser console logging with levels
-  - User actions tracked (button clicks, form submissions, navigation)
-  - API calls logged (request/response, timing, errors)
-  - Component lifecycle events (mount, unmount, errors)
-  - Performance metrics (render time, interaction delays)
+**Frontend (✅ Complete - Fyne GUI):**
+- Language: Go
+- Framework: Fyne v2 (native cross-platform GUI)
+- UI Components: Fyne widgets + custom containers
+- Styling: Custom theme (British Racing Green #00352B accent)
+- Color System: Day/night mode with theme toggle
+- Design Language: Modern Material Design with custom colors
+- State: Direct backend function calls (in-process, no HTTP)
+- Logging: File logging with rotation
+  - User actions tracked (button clicks, navigation, form submissions)
+  - Component interactions logged (tab switches, dialogs, errors)
+  - Performance metrics (calculation times, render delays)
   - Feature usage analytics (which screens visited, how often)
-- Build: Vite (via SvelteKit)
-- Output: Static files in `ui/build/`
+- Build: Go build (cross-compilation support)
+- Output: Single binary executable
 
 **Integration:**
-- Frontend → Backend: HTTP REST API (JSON)
-- Backend serves frontend: Go `embed` package for static files
-- Deployment: Single binary (includes both frontend and backend)
-- Desktop: Opens default browser OR uses go-webview for native feel
+- Frontend → Backend: Direct function calls (same process)
+- No HTTP layer needed (Fyne GUI calls domain logic directly)
+- Deployment: Single binary (tf-gui.exe on Windows)
+- Desktop: Native window with Fyne canvas rendering
 
 **Development Environment:**
 - OS: Linux (WSL2/Kali) for development
@@ -275,212 +271,199 @@ Gate 5: Behavior Constraints Honored
 
 ## Visual Design Philosophy
 
-### Modern, Sleek, and Appealing
+### Modern, Clean, and Functional
 
-**Core Principle:** The interface should be a pleasure to use. Beautiful design encourages regular engagement with the systematic process.
+**Core Principle:** The interface should be clear and purposeful. Clean design with strategic color usage encourages regular engagement with the systematic process.
 
 **Design Language:**
-- **Gradients over flat colors** - Every major UI element uses smooth gradients
-- **Smooth transitions** - 0.3s ease-in-out for all state changes
-- **Subtle shadows** - Depth and dimension without clutter
-- **Rounded corners** - Soft, approachable feel (border-radius: 8-12px)
-- **Whitespace** - Generous padding and margins for breathing room
-- **Typography** - Clear hierarchy with modern sans-serif fonts (Inter, SF Pro, Segoe UI)
+- **Strategic color usage** - British Racing Green (#00352B) for accents and important elements
+- **Material Design principles** - Clean, modern aesthetic with Fyne's native widgets
+- **Clear visual hierarchy** - Important elements (banner, buttons) are prominent
+- **Generous spacing** - Padding and margins for readability
+- **Consistent typography** - Fyne's built-in font system with bold for emphasis
 
 ### Color System
 
-**Day Mode (Light Theme):**
-```css
-/* Background */
---bg-primary: #FFFFFF         /* Main background */
---bg-secondary: #F9FAFB       /* Cards, panels */
---bg-tertiary: #F3F4F6        /* Hover states */
+**Custom Fyne Theme - Day Mode (Light):**
+```go
+// Background colors
+Background: color.White                    // Main background
+Card: color.NRGBA{R: 249, G: 250, B: 251, A: 255}  // Cards, panels
 
-/* Text */
---text-primary: #111827       /* Main text */
---text-secondary: #6B7280     /* Subtext */
---text-tertiary: #9CA3AF      /* Muted text */
+// Text colors
+Foreground: color.Black                    // Main text
+PlaceHolder: color.Gray{Y: 0xAA}          // Placeholder text
 
-/* Gradients */
---gradient-red: linear-gradient(135deg, #DC2626 0%, #991B1B 100%)
---gradient-yellow: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)
---gradient-green: linear-gradient(135deg, #10B981 0%, #059669 100%)
---gradient-blue: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)
---gradient-purple: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)
-
-/* Borders */
---border-color: #E5E7EB
---border-focus: #3B82F6
+// State colors
+Primary: color.NRGBA{R: 0, G: 53, B: 43, A: 255}   // British Racing Green
+Success: color.NRGBA{R: 16, G: 185, B: 129, A: 255} // GREEN banner
+Warning: color.NRGBA{R: 245, G: 158, B: 11, A: 255} // YELLOW banner
+Error: color.NRGBA{R: 220, G: 38, B: 38, A: 255}    // RED banner
 ```
 
-**Night Mode (Dark Theme):**
-```css
-/* Background */
---bg-primary: #0F172A         /* Main background (slate-900) */
---bg-secondary: #1E293B       /* Cards, panels (slate-800) */
---bg-tertiary: #334155        /* Hover states (slate-700) */
+**Custom Fyne Theme - Night Mode (Dark):**
+```go
+// Background colors
+Background: color.NRGBA{R: 15, G: 23, B: 42, A: 255}  // slate-900
+Card: color.NRGBA{R: 30, G: 41, B: 59, A: 255}       // slate-800
 
-/* Text */
---text-primary: #F1F5F9       /* Main text (slate-100) */
---text-secondary: #CBD5E1     /* Subtext (slate-300) */
---text-tertiary: #94A3B8      /* Muted text (slate-400) */
+// Text colors
+Foreground: color.NRGBA{R: 241, G: 245, B: 249, A: 255}  // slate-100
+PlaceHolder: color.NRGBA{R: 148, G: 163, B: 184, A: 255} // slate-400
 
-/* Gradients (slightly muted for dark mode) */
---gradient-red: linear-gradient(135deg, #DC2626 0%, #7F1D1D 100%)
---gradient-yellow: linear-gradient(135deg, #F59E0B 0%, #B45309 100%)
---gradient-green: linear-gradient(135deg, #10B981 0%, #047857 100%)
---gradient-blue: linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%)
---gradient-purple: linear-gradient(135deg, #8B5CF6 0%, #5B21B6 100%)
-
-/* Borders */
---border-color: #334155
---border-focus: #60A5FA
+// State colors (same as light mode for consistency)
+Primary: color.NRGBA{R: 0, G: 53, B: 43, A: 255}   // British Racing Green
+Success: color.NRGBA{R: 16, G: 185, B: 129, A: 255}
+Warning: color.NRGBA{R: 245, G: 158, B: 11, A: 255}
+Error: color.NRGBA{R: 220, G: 38, B: 38, A: 255}
 ```
 
 **Theme Toggle:**
-- Icon: Sun ☀️ (day mode) / Moon 🌙 (night mode)
-- Location: Top-right corner of header
-- Transition: Smooth 0.3s fade on all color changes
-- Persistence: Save preference to localStorage
-- Default: Detect system preference (`prefers-color-scheme`)
+- Icon: Sun ☀️ (light mode) / Moon 🌙 (dark mode)
+- Location: Top toolbar with other controls
+- Transition: Immediate (Fyne's built-in theme switching)
+- Persistence: Saved to app preferences
+- Default: System preference detected via Fyne
 
 ### Component Design Guidelines
 
 **Buttons:**
-```css
-/* Primary Action (e.g., "SAVE GO DECISION") */
-- Background: Gradient (green for GO, red for NO-GO, blue for neutral)
-- Padding: 16px 32px
-- Font: Bold, 18px
-- Border-radius: 8px
-- Shadow: 0 4px 6px rgba(0,0,0,0.1)
-- Hover: Lift effect (translateY(-2px)) + deeper shadow
-- Disabled: Grayscale filter + reduced opacity
+```go
+// Primary Action (e.g., "SAVE GO DECISION")
+widget.NewButtonWithIcon("Save GO", theme.ConfirmIcon(), handler)
+- Importance: widget.HighImportance (green background)
+- Text: Bold, uppercase
+- Icon: theme icon (confirm, cancel, etc.)
+- Disabled state: Grayed out automatically
 
-/* Secondary Action */
-- Background: Transparent
-- Border: 2px solid with gradient border (via pseudo-element)
-- Same size and hover effects
+// Danger Action (e.g., "SAVE NO-GO DECISION")
+widget.NewButtonWithIcon("Save NO-GO", theme.CancelIcon(), handler)
+- Importance: widget.DangerImportance (red background)
+
+// Secondary Action
+widget.NewButton("Cancel", handler)
+- Importance: widget.LowImportance (transparent background)
 ```
 
 **Cards/Panels:**
-```css
-- Background: --bg-secondary
-- Border: 1px solid --border-color
-- Border-radius: 12px
-- Shadow: 0 1px 3px rgba(0,0,0,0.1)
-- Padding: 24px
-- Hover: Subtle lift + shadow increase (for clickable cards)
+```go
+container.NewPadded(
+    widget.NewCard("Title", "Subtitle", content)
+)
+- Uses Fyne's Card widget for consistent styling
+- Automatic borders and shadows
+- Padding: Standard Fyne padding (theme.Padding())
 ```
 
 **Forms:**
-```css
-/* Input Fields */
-- Background: --bg-primary
-- Border: 1px solid --border-color
-- Border-radius: 6px
-- Padding: 12px 16px
-- Focus: Border color → --border-focus + subtle glow
+```go
+// Input Fields
+widget.NewEntry()
+- Placeholder text supported
+- Validation via OnChanged
+- Focus highlighting automatic
 
-/* Checkboxes */
-- Custom styled with gradient when checked
-- Size: 24px × 24px
-- Check icon with smooth animation
+// Checkboxes
+widget.NewCheck("Label", onChanged)
+- Material Design styling
+- Check animation built-in
 
-/* Dropdowns */
-- Same styling as inputs
-- Chevron icon with smooth rotation on open
+// Dropdowns
+widget.NewSelect(options, onChanged)
+- Native dropdown styling
+- Keyboard navigation
 ```
 
 **Banner (The Star of the Show):**
-```css
-- Height: 20% of viewport height (minimum 150px)
-- Width: 90% of container (centered)
-- Margin: 32px auto
-- Border-radius: 16px
-- Background: Gradient (changes based on state)
-- Shadow: 0 8px 16px with banner color (alpha 0.3)
-- Text: 36px bold, white, centered
-- Animation: Pulse effect on state change
-- Glow: Subtle outer glow in banner color
+```go
+// Large colored rectangle with text overlay
+canvas.NewRectangle(bannerColor)  // RED/YELLOW/GREEN
+canvas.NewText("BANNER MESSAGE", color.White)
+- Height: 150-200 pixels (fixed)
+- Width: Full container width
+- Centered text, 24-32pt bold
+- Color changes based on state
+- Icon + text layout
 ```
 
 **Tables:**
-```css
-- Header: Gradient background (subtle blue)
-- Rows: Alternating --bg-primary and --bg-secondary
-- Hover: Highlight row with --bg-tertiary
-- Borders: Minimal, using --border-color
-- Cell padding: 16px
+```go
+widget.NewTable(
+    length func() (int, int),
+    create func() fyne.CanvasObject,
+    update func(widget.TableCellID, fyne.CanvasObject)
+)
+- Built-in alternating row colors (via theme)
+- Header row support
+- Cell padding: theme.Padding()
 ```
-
-### Animation Guidelines
-
-**State Transitions:**
-- Banner color change: 0.3s ease-in-out
-- Page navigation: 0.2s slide-in from right
-- Modal appearance: 0.2s fade-in + scale(0.95 → 1.0)
-- Loading spinner: Continuous rotation with gradient trail
-
-**Interactions:**
-- Button hover: 0.15s ease-out
-- Input focus: 0.1s ease-in
-- Checkbox check: 0.2s spring animation
-
-**Micro-interactions:**
-- Checkmark appears with checkmark draw animation
-- Success notification slides in from top
-- Error notification shakes slightly on appear
 
 ### Icon Usage
 
-**Icon Library:** Lucide Icons or Heroicons (clean, modern, consistent)
+**Icon Library:** Fyne's built-in theme icons + custom icons as needed
 
 **Sizes:**
-- Small: 16px (inline with text)
-- Medium: 24px (buttons, navigation)
-- Large: 32px (headers, feature icons)
-- XL: 48px (empty states, banners)
+- Standard: theme.IconSize() (typically 20px)
+- Large: For banners and headers (32-48px custom)
 
-**Colors:**
-- Match text color in context
-- Use gradient fill for important icons (e.g., banner icons)
-
-### Spacing System (8px base)
-
-```
---space-1: 4px
---space-2: 8px
---space-3: 12px
---space-4: 16px
---space-5: 24px
---space-6: 32px
---space-8: 48px
---space-10: 64px
+**Usage:**
+```go
+theme.ConfirmIcon()  // Checkmark
+theme.CancelIcon()   // X mark
+theme.InfoIcon()     // Information
+theme.WarningIcon()  // Warning triangle
+theme.ErrorIcon()    // Error/alert
+theme.HomeIcon()     // Dashboard
+theme.DocumentIcon() // Checklist
+// etc.
 ```
 
-### Responsive Breakpoints
+### Spacing System
 
+Fyne uses theme-based spacing:
+
+```go
+theme.Padding()       // Standard padding (4px)
+theme.InnerPadding()  // Inner padding
+theme.LineSpacing()   // Line spacing
 ```
---mobile: 640px
---tablet: 768px
---desktop: 1024px
---wide: 1280px
+
+Custom spacing where needed:
+```go
+container.NewPadded(content)  // Automatic padding
+container.NewVBox(           // Vertical with spacing
+    widget.NewLabel("Item 1"),
+    widget.NewSeparator(),
+    widget.NewLabel("Item 2"),
+)
 ```
 
-Desktop-first design (optimized for trading desk), but gracefully degrades to tablet.
+### Window Sizing
 
-### Typography Scale
+```go
+// Minimum window size
+window.Resize(fyne.NewSize(1200, 800))
+window.SetFixedSize(false)  // Allow resizing
 
+// Optimized for desktop trading
+// Minimum: 1200x800
+// Recommended: 1400x900 or larger
 ```
---text-xs: 12px
---text-sm: 14px
---text-base: 16px
---text-lg: 18px
---text-xl: 20px
---text-2xl: 24px
---text-3xl: 30px
---text-4xl: 36px (banner text)
+
+### Typography
+
+Fyne uses theme-based typography:
+
+```go
+// Text sizes
+theme.TextSize()              // Standard (14px)
+theme.TextHeadingSize()       // Headings (18px)
+theme.TextSubHeadingSize()    // Subheadings (16px)
+
+// Custom sizes for banner
+canvas.NewText("BANNER", color.White)
+text.TextSize = 32  // Large banner text
+text.TextStyle = fyne.TextStyle{Bold: true}
 ```
 
 ---
@@ -794,215 +777,285 @@ Feature: Daily trend-following workflow
 
 ## Technical Components
 
-### Backend API Endpoints (to implement)
+### Backend Functions (Direct Calls - No HTTP)
 
-The backend already has the domain logic. We need to expose it via HTTP:
+The Fyne GUI calls backend domain logic directly (in-process, no HTTP layer needed):
 
 **Settings:**
-- `GET /api/settings` - Get current settings
-- `PUT /api/settings` - Update settings
-
-**Candidates:**
-- `POST /api/candidates/scan` - Trigger FINVIZ scan
-  - Body: `{ "preset": "TF_BREAKOUT_LONG" }`
-  - Returns: `{ "count": 23, "tickers": [...] }`
-- `POST /api/candidates/import` - Import selected candidates
-  - Body: `{ "tickers": ["AAPL", "MSFT"], "date": "2025-10-29" }`
-- `GET /api/candidates?date=2025-10-29` - Get candidates for date
-- `DELETE /api/candidates/:ticker` - Remove candidate
-
-**Checklist:**
-- `POST /api/checklist/evaluate` - Evaluate checklist
-  - Body: Full checklist data (ticker, checks, quality items)
-  - Returns: `{ "banner": "GREEN", "missing_count": 0, "score": 4, ... }`
-- `GET /api/checklist/:ticker` - Get last evaluation for ticker
-
-**Position Sizing:**
-- `POST /api/size/calculate` - Calculate position size
-  - Body: `{ "ticker", "entry", "atr", "method", "k" }`
-  - Returns: Full sizing result (shares, risk, stops, add-ons)
-
-**Heat:**
-- `POST /api/heat/check` - Check heat caps
-  - Body: `{ "ticker", "risk_amount", "bucket" }`
-  - Returns: Heat analysis (current, new, caps, result)
-
-**Gates:**
-- `POST /api/gates/check` - Run all 5 gates
-  - Body: Full trade data
-  - Returns: All gate results + final pass/fail
-
-**Decisions:**
-- `POST /api/decisions` - Save GO or NO-GO decision
-  - Body: Full decision record
-- `GET /api/decisions?date=2025-10-29` - Get decisions for date
-- `GET /api/decisions/:id` - Get specific decision
-
-**Positions:**
-- `GET /api/positions` - Get all open positions
-- `POST /api/positions` - Open new position (after GO decision)
-- `PUT /api/positions/:id` - Update position (add unit, move stop)
-- `DELETE /api/positions/:id` - Close position (log exit)
-
-**Calendar:**
-- `GET /api/calendar?weeks=10` - Get calendar data
-  - Returns: Positions grouped by sector × week
-
-### Frontend Components (to build)
-
-**Layout:**
-- `App.svelte` - Main layout with navigation and theme provider
-- `Header.svelte` - App header with title, settings icon, **theme toggle button**
-- `Navigation.svelte` - Sidebar or top nav with gradient accent
-- `Banner.svelte` - Large 3-state banner with gradient backgrounds (RED/YELLOW/GREEN)
-- `ThemeToggle.svelte` - Day/night mode switcher with smooth transition
-
-**Dashboard:**
-- `Dashboard.svelte` - Main landing page
-- `PositionList.svelte` - Table of open positions
-- `HeatGauge.svelte` - Visual heat indicators
-- `CandidatesSummary.svelte` - Today's candidates count
-
-**FINVIZ Scan:**
-- `FINVIZScanner.svelte` - Scan trigger and results
-- `CandidateImport.svelte` - Review and select candidates
-- `PresetManager.svelte` - Manage FINVIZ presets
-
-**Checklist:**
-- `Checklist.svelte` - Main checklist form
-- `RequiredGates.svelte` - 5 required checkboxes (must check all)
-- `QualityItems.svelte` - 4 optional checkboxes (score boosters)
-- `JournalNote.svelte` - Free-text journal entry
-
-**Position Sizing:**
-- `PositionSizer.svelte` - Main sizing form
-- `SizingResults.svelte` - Display calculated shares, stops, add-ons
-- `AddOnSchedule.svelte` - Visual add-on levels
-
-**Heat Check:**
-- `HeatCheck.svelte` - Main heat analysis
-- `HeatWarning.svelte` - RED warning if caps exceeded
-- `HeatSuggestions.svelte` - Suggestions to resolve cap issues
-
-**Trade Entry:**
-- `TradeEntry.svelte` - Main trade entry screen
-- `GateResults.svelte` - Display all 5 gate results
-- `TradeSummary.svelte` - Summary of trade plan
-- `DecisionButtons.svelte` - SAVE GO / SAVE NO-GO buttons
-
-**Calendar:**
-- `Calendar.svelte` - 10-week sector × week grid
-- `CalendarCell.svelte` - Individual cell (sector + week)
-- `CalendarLegend.svelte` - Color coding, heat indicators
-
-**TradingView Integration:**
-- `TradingViewLink.svelte` - Button to open TV chart
-- Constructs URL: `https://www.tradingview.com/chart/?symbol={ticker}`
-
-**Utility Components:**
-- `Modal.svelte` - Generic modal with backdrop blur and gradient border
-- `LoadingSpinner.svelte` - Smooth animated spinner with gradient
-- `ErrorMessage.svelte` - Display API errors with red gradient accent
-- `SuccessMessage.svelte` - Display success with green gradient accent
-- `Button.svelte` - Reusable button with gradient backgrounds and hover effects
-- `Card.svelte` - Container with subtle shadow and gradient border
-- `Badge.svelte` - Small status indicator with gradient fill
-
-### State Management (Svelte)
-
-**Stores (`src/lib/stores/`):**
-
-```typescript
-// settings.ts
-export const settings = writable({
-  equity: 100000,
-  riskPct: 0.75,
-  portfolioCap: 4.0,
-  bucketCap: 1.5,
-  maxUnits: 4,
-  // ... other settings
-});
-
-// candidates.ts
-export const candidates = writable([]);
-export const candidatesDate = writable(null);
-
-// checklist.ts
-export const currentChecklist = writable({
-  ticker: '',
-  banner: 'RED',
-  requiredGates: {
-    signal: false,
-    riskSize: false,
-    liquidity: false,
-    exits: false,
-    behavior: false
-  },
-  qualityItems: {
-    regime: false,
-    noChase: false,
-    earnings: false,
-    journal: ''
-  },
-  score: 0,
-  evaluatedAt: null
-});
-
-// positions.ts
-export const positions = writable([]);
-export const portfolioHeat = writable(0);
-export const bucketHeat = writable({});
-
-// ui.ts
-export const banner = writable({
-  state: 'RED', // 'RED' | 'YELLOW' | 'GREEN'
-  message: 'Complete checklist to begin'
-});
-
-export const notifications = writable([]);
-export const isLoading = writable(false);
+```go
+storage.GetAllSettings(db) -> map[string]string
+storage.UpdateSetting(db, key, value) -> error
 ```
 
-**API Client (`src/lib/api/`):**
+**Candidates:**
+```go
+scrape.ScrapeFinviz(presetURL) -> []string (tickers)
+storage.AddCandidates(db, tickers, date) -> error
+storage.GetCandidates(db, date) -> []Candidate
+storage.DeleteCandidate(db, ticker) -> error
+```
 
-```typescript
-// client.ts
-const API_BASE = '/api';
+**Checklist:**
+```go
+domain.EvaluateChecklist(params) -> ChecklistResult
+  // Returns: banner, missing_count, score, etc.
+storage.SaveEvaluation(db, ticker, result) -> error
+storage.GetLastEvaluation(db, ticker) -> Evaluation
+```
 
-export async function get(endpoint: string) {
-  const res = await fetch(`${API_BASE}${endpoint}`);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+**Position Sizing:**
+```go
+domain.CalculateSizeStock(ticker, entry, atr, k, riskPct, equity) -> SizeResult
+domain.CalculateSizeOptDeltaATR(...) -> SizeResult
+domain.CalculateSizeOptContracts(...) -> SizeResult
+  // Returns: shares, risk, stops, add-ons
+```
+
+**Heat:**
+```go
+domain.CheckHeat(db, riskAmount, bucket, equity, portfolioCap, bucketCap) -> HeatResult
+  // Returns: current heat, new heat, caps, pass/fail
+```
+
+**Gates:**
+```go
+domain.CheckGates(db, ticker, banner, riskDollars, bucket, equity, caps) -> GateResults
+  // Returns: all 5 gate results + final pass/fail
+```
+
+**Decisions:**
+```go
+storage.SaveDecision(db, decision) -> error
+storage.GetDecisions(db, date) -> []Decision
+storage.GetDecision(db, id) -> Decision
+```
+
+**Positions:**
+```go
+storage.GetPositions(db) -> []Position
+storage.AddPosition(db, position) -> error
+storage.UpdatePosition(db, id, updates) -> error
+storage.ClosePosition(db, id, exitPrice, exitDate) -> error
+```
+
+**Calendar:**
+```go
+storage.GetPositionsForCalendar(db, weeks) -> map[string][]Position
+  // Returns positions grouped by sector × week
+```
+
+### Frontend Screens (Fyne Implementation)
+
+**Layout:**
+- `main.go` - Main application with window and tabs
+- `theme.go` - Custom Fyne theme (British Racing Green + dark/light modes)
+- `buildMainUI()` - Creates tabbed interface with navigation
+- Large banner displayed at top of relevant screens (RED/YELLOW/GREEN)
+
+**Dashboard:**
+- `dashboard.go` - Main landing screen (buildDashboardScreen)
+- Position table using widget.NewTable
+- Heat gauges using progress bars
+- Candidates summary card
+
+**FINVIZ Scan:**
+- `scanner.go` - Scan trigger and results (buildScannerScreen)
+- Button to run FINVIZ scrape
+- Results table with checkbox selection
+- Import button
+
+**Checklist:**
+- `checklist.go` - Main checklist form (buildChecklistScreen)
+- 5 required checkboxes (widget.NewCheck)
+- 4 optional quality checkboxes
+- Journal text area (widget.NewMultiLineEntry)
+- Banner component showing RED/YELLOW/GREEN state
+
+**Position Sizing:**
+- `position_sizing.go` - Sizing calculator (buildPositionSizingScreen)
+- Form with entry fields
+- Method dropdown (Stock, Options delta-ATR, Options contracts)
+- Results display in card
+- Add-on schedule table
+
+**Heat Check:**
+- `heat_check.go` - Heat analysis (buildHeatCheckScreen)
+- Portfolio heat progress bar
+- Bucket heat progress bars
+- Warning dialogs if caps exceeded
+- Suggestions for resolution
+
+**Trade Entry:**
+- `trade_entry.go` - Final gate check (buildTradeEntryScreen)
+- Trade summary card
+- 5 gate results display
+- Large GO/NO-GO buttons
+
+**Calendar:**
+- `calendar.go` - 10-week sector grid (buildCalendarScreen)
+- Custom grid layout with containers
+- Cells colored by heat level
+- Tooltips on hover
+
+**TradingView Integration:**
+- `utils.go` - Helper function to open browser
+- Constructs URL and opens in default browser
+- Available from multiple screens (candidates, checklist, etc.)
+
+**Utility Helpers:**
+- `widgets.go` - Custom widgets and helpers
+- Dialog helpers (ShowStyledInformation, ShowStyledConfirm)
+- Banner creation function
+- Progress bar builders
+
+### State Management (Fyne)
+
+**State Structs (`internal/gui/state/`):**
+
+```go
+// state.go - Central app state
+type AppState struct {
+    DB *storage.DB
+
+    // Settings
+    Settings map[string]string
+
+    // Candidates
+    Candidates []domain.Candidate
+    CandidatesDate string
+
+    // Current Checklist Evaluation
+    CurrentChecklist struct {
+        Ticker        string
+        Banner        string // "RED", "YELLOW", "GREEN"
+        RequiredGates domain.ChecklistGates
+        QualityItems  domain.ChecklistQuality
+        Score         int
+        EvaluatedAt   time.Time
+    }
+
+    // Positions and Heat
+    Positions      []domain.Position
+    PortfolioHeat  float64
+    BucketHeat     map[string]float64
+
+    // UI State
+    Banner struct {
+        State   string // "RED", "YELLOW", "GREEN"
+        Message string
+    }
+    Notifications []Notification
+    IsLoading     bool
+
+    // Callbacks for UI updates
+    OnSettingsChanged    func()
+    OnCandidatesChanged  func()
+    OnChecklistChanged   func()
+    OnPositionsChanged   func()
+    OnBannerChanged      func()
 }
 
-export async function post(endpoint: string, data: any) {
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+// notification.go
+type Notification struct {
+    Type    string // "success", "warning", "error", "info"
+    Message string
+    Time    time.Time
 }
 
-// Similar for PUT, DELETE...
+// Methods on AppState to update and notify
+func (s *AppState) SetBanner(state, message string) {
+    s.Banner.State = state
+    s.Banner.Message = message
+    if s.OnBannerChanged != nil {
+        s.OnBannerChanged()
+    }
+}
 
-// Specific API functions
-export const api = {
-  settings: {
-    get: () => get('/settings'),
-    update: (data) => put('/settings', data)
-  },
-  candidates: {
-    scan: (preset) => post('/candidates/scan', { preset }),
-    import: (tickers, date) => post('/candidates/import', { tickers, date }),
-    list: (date) => get(`/candidates?date=${date}`)
-  },
-  checklist: {
-    evaluate: (data) => post('/checklist/evaluate', data)
-  },
-  // ... etc
-};
+func (s *AppState) LoadSettings() error {
+    settings, err := storage.GetAllSettings(s.DB)
+    if err != nil {
+        return err
+    }
+    s.Settings = settings
+    if s.OnSettingsChanged != nil {
+        s.OnSettingsChanged()
+    }
+    return nil
+}
+
+func (s *AppState) LoadPositions() error {
+    positions, err := storage.GetAllPositions(s.DB)
+    if err != nil {
+        return err
+    }
+    s.Positions = positions
+
+    // Calculate portfolio heat
+    s.PortfolioHeat = 0
+    s.BucketHeat = make(map[string]float64)
+    for _, pos := range positions {
+        s.PortfolioHeat += pos.Risk
+        s.BucketHeat[pos.Bucket] += pos.Risk
+    }
+
+    if s.OnPositionsChanged != nil {
+        s.OnPositionsChanged()
+    }
+    return nil
+}
+```
+
+**Direct Backend Calls (No API Layer):**
+
+```go
+// In screen code, directly call backend functions
+
+// Load settings
+settings, err := storage.GetAllSettings(app.DB)
+if err != nil {
+    dialog.ShowError(err, window)
+    return
+}
+
+// Update settings
+err = storage.SaveSetting(app.DB, "equity", "100000")
+if err != nil {
+    dialog.ShowError(err, window)
+    return
+}
+
+// Scan candidates
+candidates, err := domain.ScanCandidates(preset)
+if err != nil {
+    dialog.ShowError(err, window)
+    return
+}
+
+// Import candidates
+err = storage.ImportCandidates(app.DB, tickers, date)
+if err != nil {
+    dialog.ShowError(err, window)
+    return
+}
+
+// Evaluate checklist
+result, err := domain.EvaluateChecklist(domain.ChecklistParams{
+    FromPreset: true,
+    Trend:      true,
+    Liquidity:  true,
+    Timeframe:  true,
+    Earnings:   true,
+    Journal:    journalText,
+})
+if err != nil {
+    dialog.ShowError(err, window)
+    return
+}
+
+// Update app state
+app.CurrentChecklist.Banner = result.Banner
+app.CurrentChecklist.Score = result.Score
+app.SetBanner(result.Banner, result.Message)
 ```
 
 ---
@@ -1012,37 +1065,36 @@ export const api = {
 ### Phase 0: Foundation & Proof-of-Concept (Week 1-2)
 
 **Goals:**
-- Validate Go + Svelte architecture
-- Prove frontend ↔ backend communication works
+- Validate Go + Fyne architecture
+- Prove direct backend function calls work from GUI
 - Test cross-compilation to Windows .exe
 - Establish build and deployment workflow
 
 **Deliverables:**
-1. **Fyne POC** (Quick validation)
-   - Simple Fyne app that calls backend functions
-   - Proves Go GUI can work
-   - Tests embedding and packaging
+1. **Fyne Basic App**
+   - Simple Fyne app that calls backend functions directly
+   - Display settings from database
+   - Edit and save settings
    - Duration: 2-3 days
 
-2. **Svelte POC** (Real implementation start)
-   - SvelteKit project with static adapter
-   - Single component: Settings form
-   - API call: `GET /api/settings`, `PUT /api/settings`
-   - Go backend serves Svelte static files
-   - Duration: 3-4 days
+2. **Custom Theme Implementation**
+   - British Racing Green accent color (#00352B)
+   - Day mode and dark mode color schemes
+   - Custom fonts and spacing
+   - Duration: 1-2 days
 
 3. **Build Pipeline**
-   - `scripts/sync-ui-to-go.sh` (copies Svelte build → Go embed)
-   - `scripts/build-go-windows.sh` (cross-compile .exe)
-   - Test: Run .exe on Windows, access via browser
+   - `scripts/build-windows.sh` (cross-compile .exe from Linux)
+   - Windows .exe with embedded database support
+   - Test: Run .exe on Windows, GUI launches natively
    - Duration: 1-2 days
 
 **Success Criteria:**
-- ✓ Fyne POC displays data from backend
-- ✓ Svelte POC renders in browser
-- ✓ Backend serves Svelte static files
-- ✓ API call successfully retrieves settings
-- ✓ Windows .exe runs and opens browser to app
+- ✓ Fyne app displays real data from SQLite database
+- ✓ Direct function calls to backend domain logic work
+- ✓ Custom British Racing Green theme applied
+- ✓ Windows .exe runs natively (no browser required)
+- ✓ Database operations work correctly
 - ✓ Documentation updated (LLM-update.md, PROGRESS.md)
 
 ---
@@ -1050,158 +1102,161 @@ export const api = {
 ### Phase 1: Dashboard & FINVIZ Scanner (Week 3-4)
 
 **Goals:**
-- Build core navigation and layout
+- Build core navigation and layout using Fyne
 - Implement FINVIZ scanning workflow
 - Display candidates and positions
 
 **Deliverables:**
 1. **Layout Components**
-   - App shell with navigation
-   - Header, sidebar/nav
-   - Routing (SvelteKit routes)
+   - Main window with tab navigation (widget.NewAppTabs)
+   - Header with app name and session info
+   - Tab-based navigation (Dashboard, Checklist, Sizing, Heat, Entry, Calendar)
 
 2. **Dashboard Screen**
-   - Display open positions (from `GET /api/positions`)
-   - Show portfolio heat (from `GET /api/heat/current`)
+   - Display open positions (direct call: storage.GetAllPositions)
+   - Show portfolio heat (calculate from positions)
    - Show today's candidates count
    - Quick stats: equity, available capacity
+   - Uses widget.NewTable for positions list
 
 3. **FINVIZ Scanner**
    - One-click "Run Daily Scan" button
-   - Calls `POST /api/candidates/scan`
-   - Displays results table
-   - Checkbox selection for import
-   - "Import Selected" button
+   - Directly calls domain.ScanCandidates(preset)
+   - Displays results in widget.NewTable
+   - Checkbox selection for import (widget.NewCheck per row)
+   - "Import Selected" button calls storage.ImportCandidates
 
-4. **Backend API Endpoints**
-   - Implement HTTP server wrapper for existing domain logic
-   - Endpoints: `/api/positions`, `/api/candidates/scan`, `/api/candidates/import`
+4. **No Backend API Layer Needed**
+   - All screens call backend functions directly
+   - No HTTP server, no JSON marshalling
+   - Direct access to domain and storage packages
 
 **Success Criteria:**
-- ✓ Dashboard displays real data from database
-- ✓ FINVIZ scan button fetches candidates
-- ✓ Candidate import saves to database
-- ✓ Navigation works between screens
+- ✓ Dashboard displays real data from SQLite database
+- ✓ FINVIZ scan button fetches candidates via domain.ScanCandidates
+- ✓ Candidate import saves to database via storage.ImportCandidates
+- ✓ Tab navigation works between all screens
 
 ---
 
 ### Phase 2: Checklist & Position Sizing (Week 5-6)
 
 **Goals:**
-- Implement 5 gates + quality items checklist
-- Display 3-state banner
+- Implement 5 gates + quality items checklist using Fyne
+- Display 3-state banner (custom widget)
 - Calculate position sizing
 - Enforce 2-minute cool-off
 
 **Deliverables:**
 1. **Checklist Screen**
-   - Form: ticker, entry, ATR, sector
-   - 5 required checkboxes (gates)
-   - 4 optional checkboxes (quality)
-   - Journal text area
-   - Large banner at top (RED/YELLOW/GREEN)
-   - "Save Evaluation" button
+   - Form: ticker entry, ATR entry, sector dropdown (widget.NewForm)
+   - 5 required checkboxes (widget.NewCheck)
+   - 4 optional checkboxes (widget.NewCheck)
+   - Journal text area (widget.NewMultiLineEntry)
+   - Large banner at top (custom container.New with colored background)
+   - "Save Evaluation" button (widget.NewButton)
 
-2. **Banner Component**
-   - Minimum 20% screen height
-   - RED: Any required unchecked
-   - YELLOW: All required, score < 3
-   - GREEN: All required, score ≥ 3
-   - Updates live as checkboxes change
+2. **Banner Widget**
+   - Custom Fyne widget, minimum 20% screen height
+   - RED: Any required unchecked (color.NRGBA{R: 220, G: 38, B: 38, A: 255})
+   - YELLOW: All required, score < 3 (color.NRGBA{R: 245, G: 158, B: 11, A: 255})
+   - GREEN: All required, score ≥ 3 (color.NRGBA{R: 16, G: 185, B: 129, A: 255})
+   - Updates live as checkboxes change (via OnChanged callbacks)
 
 3. **Position Sizing Screen**
-   - Form: pre-filled from checklist
-   - Method dropdown (stock, opt-delta, opt-contracts)
-   - "Calculate" button
-   - Results: shares, risk, stops, add-ons
+   - Form: pre-filled from checklist evaluation
+   - Method dropdown (widget.NewSelect with stock/opt-delta/opt-contracts)
+   - "Calculate" button calls domain.CalculateSizeStock/Opt directly
+   - Results display: shares, risk, stops, add-ons
    - "Save Position Plan" button
 
-4. **Backend Endpoints**
-   - `POST /api/checklist/evaluate`
-   - `POST /api/size/calculate`
-   - Timestamp storage for 2-min timer
+4. **Direct Backend Calls (No API Layer)**
+   - domain.EvaluateChecklist(params) for checklist
+   - domain.CalculateSizeStock/Opt for position sizing
+   - storage.SaveEvaluation for timestamp (2-min timer)
 
 **Success Criteria:**
-- ✓ Banner changes color based on checklist state
-- ✓ Checklist evaluation saves to database
-- ✓ 2-minute timer starts
-- ✓ Position sizing calculates correctly (matches Van Tharp)
-- ✓ Results match existing CLI output
+- ✓ Banner changes color based on checklist state in real-time
+- ✓ Checklist evaluation saves to database via storage layer
+- ✓ 2-minute timer starts upon evaluation save
+- ✓ Position sizing calculates correctly (matches Van Tharp method)
+- ✓ Results match existing CLI output exactly
 
 ---
 
 ### Phase 3: Heat Check & Trade Entry (Week 7-8)
 
 **Goals:**
-- Implement heat cap validation
+- Implement heat cap validation using Fyne
 - Build 5-gate final check
 - Save GO/NO-GO decisions
 
 **Deliverables:**
 1. **Heat Check Screen**
-   - Display current portfolio heat
-   - Display current bucket heat
-   - "Check Heat" button for proposed trade
-   - RED warning if cap exceeded
-   - Suggestions to resolve
+   - Display current portfolio heat (widget.NewLabel)
+   - Display current bucket heat (widget.NewTable)
+   - "Check Heat" button calls domain.CheckHeat directly
+   - RED warning if cap exceeded (custom container with red background)
+   - Suggestions to resolve (widget.NewList)
 
 2. **Trade Entry Screen**
-   - Trade summary display
-   - "Run Final Gate Check" button
-   - Display all 5 gate results
-   - Large "SAVE GO DECISION" button (disabled until all pass)
-   - "SAVE NO-GO DECISION" button (always enabled)
+   - Trade summary display (widget.NewCard with all details)
+   - "Run Final Gate Check" button calls domain.CheckGates
+   - Display all 5 gate results (widget.NewAccordion with pass/fail icons)
+   - Large "SAVE GO DECISION" button (disabled until all pass, widget.NewButton)
+   - "SAVE NO-GO DECISION" button (always enabled, widget.NewButton)
 
 3. **Gate Validation**
-   - Gate 1: Banner GREEN
-   - Gate 2: 2-min elapsed
-   - Gate 3: Not on cooldown
-   - Gate 4: Heat caps OK
-   - Gate 5: Sizing done
+   - Gate 1: Banner GREEN (check app state)
+   - Gate 2: 2-min elapsed (check time.Since)
+   - Gate 3: Not on cooldown (storage.CheckCooldown)
+   - Gate 4: Heat caps OK (domain.CheckHeat)
+   - Gate 5: Sizing done (check app state)
 
-4. **Backend Endpoints**
-   - `POST /api/heat/check`
-   - `POST /api/gates/check`
-   - `POST /api/decisions`
+4. **Direct Backend Calls (No API Layer)**
+   - domain.CheckHeat(db, risk, bucket, equity, caps)
+   - domain.CheckGates(db, ticker, banner, risk, bucket, equity, caps)
+   - storage.SaveDecision(db, decisionData)
 
 **Success Criteria:**
 - ✓ Heat check prevents cap violations
 - ✓ All 5 gates must pass for GO decision
-- ✓ 2-minute timer is enforced
-- ✓ NO-GO decisions are logged
-- ✓ No backdoors exist
+- ✓ 2-minute timer is enforced (no bypassing)
+- ✓ NO-GO decisions are logged to database
+- ✓ No backdoors exist (GO button disabled if any gate fails)
 
 ---
 
 ### Phase 4: Calendar & TradingView Integration (Week 9-10)
 
 **Goals:**
-- Visualize sector diversification
+- Visualize sector diversification using Fyne
 - Integrate with TradingView charts
 - Polish UI/UX
 
 **Deliverables:**
 1. **Calendar View**
-   - 10-week grid (2 back + 8 forward)
-   - Rows: sector buckets
+   - 10-week grid (2 back + 8 forward) using custom Fyne canvas
+   - Rows: sector buckets (widget.NewLabel for headers)
    - Columns: weeks (Mon-Sun)
-   - Cells: tickers active in that sector/week
-   - Color coding: heat levels
+   - Cells: tickers active in that sector/week (custom canvas objects)
+   - Color coding: heat levels using custom color gradients
 
 2. **TradingView Integration**
-   - "Open in TradingView" buttons on candidates
+   - "Open in TradingView" buttons on candidates (widget.NewButton)
    - Construct URL with ticker symbol
-   - Open in new tab
+   - Open in default browser using fyne.CurrentApp().OpenURL()
    - Documentation for applying Ed-Seykota.pine script
 
 3. **UI Polish**
-   - Keyboard shortcuts
-   - Better loading states
-   - Error handling improvements
-   - Mobile responsive (bonus)
+   - Keyboard shortcuts (window.Canvas().SetOnTypedKey)
+   - Better loading states (widget.NewProgressBarInfinite)
+   - Error handling improvements (dialog.ShowError)
+   - VIM keybindings (already implemented in current Fyne GUI)
 
-4. **Backend Endpoint**
-   - `GET /api/calendar?weeks=10`
+4. **Direct Backend Call (No API Layer)**
+   - storage.GetCalendarData(db, weeks) returns position data
+   - GUI builds calendar grid from raw data
 
 **Success Criteria:**
 - ✓ Calendar displays positions correctly
@@ -1220,21 +1275,21 @@ export const api = {
 
 **Deliverables:**
 1. **Testing**
-   - Frontend unit tests (Vitest)
-   - Backend API integration tests
-   - End-to-end workflow testing
+   - Go unit tests for GUI components
+   - Backend domain logic tests (already exist)
+   - End-to-end workflow testing (manual)
    - Test all 5 gates enforcement
    - Test heat cap edge cases
 
 2. **Windows Packaging**
-   - Build .msi installer (WiX on Windows)
-   - Or .exe installer (NSIS)
-   - Desktop shortcut
-   - Start menu entry
-   - Uninstaller
+   - Use `fyne package` to create .exe with icon
+   - Bundle with database initialization
+   - Desktop shortcut creation (fyne package -os windows -icon icon.png)
+   - Optional: MSI installer using WiX or NSIS
+   - Uninstaller (standard Windows uninstall)
 
 3. **Documentation**
-   - User guide (screenshots)
+   - User guide (screenshots of Fyne GUI)
    - Quick start (5-minute setup)
    - Trading workflow guide
    - Troubleshooting
@@ -1242,7 +1297,7 @@ export const api = {
 
 **Success Criteria:**
 - ✓ All critical paths tested
-- ✓ Windows installer works on clean PC
+- ✓ Windows .exe runs on clean PC without dependencies
 - ✓ User can complete full workflow in < 10 minutes
 - ✓ Documentation is clear and complete
 
@@ -1250,13 +1305,13 @@ export const api = {
 
 ## Proof-of-Concept Approach
 
-### Why Start with Fyne POC?
+### Why Fyne for Production?
 
 **Rationale:**
 1. **Fast validation** - Prove Go GUI integration works (1-2 days)
-2. **Desktop-native feel** - Test if we want pure desktop vs browser-based
-3. **Single binary** - Verify packaging and deployment
-4. **Fallback option** - If Svelte doesn't work out, we have Fyne
+2. **Desktop-native feel** - Pure desktop application, no browser required
+3. **Single binary** - True single-file deployment (.exe)
+4. **No HTTP layer** - Direct function calls, simpler architecture
 
 **Fyne POC Scope (Minimal):**
 ```
@@ -1268,50 +1323,48 @@ export const api = {
 6. Status: "Saved successfully" or error
 ```
 
-**Fyne POC Success:**
+**Fyne POC Success (COMPLETED):**
 - ✓ Window opens
 - ✓ Data loads from SQLite
 - ✓ Updates save to SQLite
 - ✓ Compiles to Windows .exe
 - ✓ Runs on Windows without dependencies
+- ✓ Custom British Racing Green theme implemented
+- ✓ VIM keybindings implemented
+- ✓ Dark mode toggle working
 
-**Then Pivot to Svelte:**
+**Fyne Chosen for Production:**
 
-**Why Svelte over Fyne for production?**
-1. **Richer UI** - Easier to build complex, beautiful interfaces with gradients, animations, and modern design
-2. **Visual Appeal** - CSS gradients, smooth transitions, sophisticated layouts (hard to achieve in Fyne)
-3. **Theme Support** - Built-in day/night mode with CSS variables and seamless switching
-4. **Web Skills** - More developers familiar with HTML/CSS/JS
-5. **Rapid Iteration** - Hot reload, browser dev tools, instant visual feedback
-6. **Flexibility** - Can add advanced features (charts, tables, custom animations)
-7. **Ecosystem** - Huge library of components and tools (icon libraries, gradient generators, etc.)
-8. **Polish** - Professional, modern appearance that makes the tool a pleasure to use
+**Why Fyne over Svelte?**
+1. **Simpler Architecture** - No HTTP server, no JSON marshalling, direct function calls
+2. **True Desktop App** - Native window, OS integration, no browser dependencies
+3. **Single Binary** - One .exe file with everything embedded
+4. **Go Ecosystem** - Same language as backend, better type safety
+5. **Performance** - Direct memory access, no HTTP overhead
+6. **Security** - No localhost port exposure, no CORS issues
+7. **Offline First** - Works without network, no web stack vulnerabilities
+8. **Proven** - Current GUI already working with all core features
 
-**Svelte POC Scope (Minimal):**
-```
-1. SvelteKit project with static adapter
-2. Single page: Settings form
-3. Fetch settings from GET /api/settings
-4. Display in form inputs
-5. Button: "Save" → PUT /api/settings
-6. Success/error notification
-```
-
-**Svelte POC Success:**
-- ✓ Svelte app builds to static files
-- ✓ Go serves static files via embed
-- ✓ API call works (GET /api/settings)
-- ✓ Form submission works (PUT /api/settings)
+**Current Fyne Implementation:**
+- ✓ All 6 tabs implemented (Dashboard, Checklist, Sizing, Heat, Entry, Calendar)
+- ✓ Custom theme with British Racing Green accent
+- ✓ VIM mode with Vimium-style hints
+- ✓ Dark mode toggle
+- ✓ Info dialogs with explanations
+- ✓ TradingView integration
+- ✓ Working with SQLite database
 - ✓ Browser opens to app when .exe runs
 - ✓ Cross-compiles to Windows .exe
 
-**Decision Point:**
+**Decision Made: Fyne**
 
-After both POCs, we choose:
-- **Fyne** if: Desktop-native feel is critical, Svelte integration is too complex
-- **Svelte** if: POC works well, UI development is faster, team prefers web tech
-
-**Expected choice: Svelte** (based on flexibility and development speed)
+Fyne was chosen for production because:
+- Desktop-native feel is critical for trading application
+- Simpler architecture (no HTTP layer, no JSON)
+- Proven working implementation with all core features
+- Single .exe deployment
+- Better performance (direct function calls)
+- Same language as backend (Go)
 
 ---
 
@@ -1638,17 +1691,19 @@ Feature: Seamless TradingView chart access
 
 ### Technical Risks
 
-**Risk: Svelte ↔ Go integration complexity**
+**Risk: Fyne GUI complexity for custom widgets**
 - **Likelihood:** Medium
-- **Impact:** High
-- **Mitigation:** Start with Fyne POC first; if Svelte fails, fall back to Fyne
-- **Contingency:** Build entire UI in Fyne (slower, but proven to work)
+- **Impact:** Medium
+- **Mitigation:** Use standard Fyne widgets where possible; build custom widgets only when needed
+- **Contingency:** Simplify UI design to use standard widgets only
+- **Status:** RESOLVED - Custom widgets (banner, calendar) successfully implemented
 
 **Risk: Cross-compilation to Windows fails**
 - **Likelihood:** Low (Go is mature)
 - **Impact:** Critical
 - **Mitigation:** Test early and often; use pure Go (no cgo)
 - **Contingency:** Develop on Windows directly (abandon Linux-first workflow)
+- **Status:** RESOLVED - Cross-compilation working perfectly (Linux → Windows .exe)
 
 **Risk: FINVIZ changes page structure (scraper breaks)**
 - **Likelihood:** Medium (over time)
@@ -1656,11 +1711,12 @@ Feature: Seamless TradingView chart access
 - **Mitigation:** Document scraper logic; make selectors configurable
 - **Contingency:** Fallback to manual CSV import; consider FINVIZ API (paid)
 
-**Risk: Browser embedding (webview) doesn't work well**
-- **Likelihood:** Medium
-- **Impact:** Low (can use default browser)
-- **Mitigation:** Test webview early; have browser fallback ready
-- **Contingency:** Always open in default browser (still works)
+**Risk: SQLite modernc.org/sqlite driver issues on Windows**
+- **Likelihood:** Low
+- **Impact:** Medium
+- **Mitigation:** Use modernc.org/sqlite (pure Go, no cgo required)
+- **Contingency:** Switch to mattn/go-sqlite3 with cgo enabled
+- **Status:** RESOLVED - modernc.org/sqlite working on Windows
 
 ### Process Risks
 
@@ -1715,34 +1771,35 @@ Feature: Seamless TradingView chart access
    - Confirm priorities
 
 2. **Create Step-by-Step Sub-Plans**
-   - `plans/phase0-foundation-poc.md` - Fyne + Svelte POCs
+   - `plans/phase0-foundation-poc.md` - Fyne POC and setup
    - `plans/phase1-dashboard-finviz.md` - Dashboard and scanning
    - `plans/phase2-checklist-sizing.md` - Checklist and sizing
    - `plans/phase3-heat-gates.md` - Heat check and trade entry
    - `plans/phase4-calendar-polish.md` - Calendar and final polish
    - `plans/phase5-testing-packaging.md` - Testing and Windows installer
 
-3. **Set Up Frontend Project Structure**
-   - Create `ui/` directory
-   - Initialize SvelteKit project
-   - Install dependencies (SvelteKit, TailwindCSS, etc.)
-   - Configure static adapter
-   - Create initial directory structure
+3. **Set Up GUI Project Structure (COMPLETED)**
+   - ✓ Created `internal/gui/` directory structure
+   - ✓ Implemented all 6 main tabs
+   - ✓ Custom British Racing Green theme
+   - ✓ VIM mode with Vimium-style hints
+   - ✓ Dark mode toggle
+   - ✓ Working with SQLite database
 
-4. **Begin Fyne POC**
-   - Create simple Fyne app
-   - Integrate with backend domain logic
-   - Test database access
-   - Test cross-compilation
-   - Document results
+4. **Fyne Implementation (COMPLETED)**
+   - ✓ Created Fyne desktop app
+   - ✓ Integrated with backend domain logic (direct calls)
+   - ✓ Database access working
+   - ✓ Cross-compilation to Windows working
+   - ✓ Custom widgets implemented
 
-### Week 1-2: Proof-of-Concept
+### Week 1-2: Foundation (COMPLETED)
 
-- [ ] Fyne POC complete (2-3 days)
-- [ ] Svelte POC complete (3-4 days)
-- [ ] Build pipeline working (1-2 days)
-- [ ] Decision: Fyne vs Svelte (1 day)
-- [ ] Document results in `docs/LLM-update.md` and `docs/PROGRESS.md`
+- ✓ Fyne implementation complete
+- ✓ Custom theme implemented (British Racing Green)
+- ✓ Build pipeline working (cross-compile Linux → Windows)
+- ✓ Decision: Fyne chosen for production
+- ✓ All 6 tabs implemented and working
 
 ### Week 3-4: Dashboard & Scanner
 

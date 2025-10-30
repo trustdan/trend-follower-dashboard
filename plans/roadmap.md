@@ -2,6 +2,16 @@
 
 **TF = Trend Following** - Systematic Donchian breakout trading system
 
+**⚠️ IMPORTANT: Technology Change - Fyne Chosen Over Svelte**
+
+This roadmap was originally written for a Svelte + Go architecture. **The project has since adopted Fyne (native Go GUI) for the frontend.** Many steps below reference Svelte, HTTP APIs, and web-based UI - these should be interpreted in terms of Fyne equivalents:
+- "SvelteKit component" → "Fyne screen/widget"
+- "HTTP API endpoint" → "Direct function call to backend"
+- "Svelte store" → "AppState struct with callbacks"
+- "CSS/Tailwind" → "Fyne theme and custom widgets"
+
+**Current Status:** Phase 0 completed with Fyne. All 6 main tabs implemented, custom British Racing Green theme working, VIM mode implemented, cross-compilation working.
+
 **Purpose:** This roadmap serves as the wireframe for all phase-specific step documents that will guide the implementation of the TF-Engine GUI application.
 
 **Structure:** Each phase is broken down into discrete step documents (e.g., `phase0-step1.md`, `phase0-step2.md`, etc.) that can be executed sequentially.
@@ -44,11 +54,11 @@
 **Duration:** 1 day
 **Dependencies:** None
 
-Set up the complete development environment on Linux (WSL2/Kali). Install Go 1.24+, Node.js 20+, verify the existing tf-engine backend compiles and tests pass. Install development tools (VSCode/Cursor, Go extensions, Svelte extensions). Configure the workspace according to `1._RULES.md—Operating_Rules_for_This_Project-(Claude_Code).md` (no Git in Linux). Verify cross-compilation to Windows works with a simple "Hello World" Go binary. Set up logging directories (`logs/`) and configure log rotation. Document all versions and paths for reproducibility.
+Set up the complete development environment on Linux (WSL2/Kali). Install Go 1.24+, verify the existing tf-engine backend compiles and tests pass. Install development tools (VSCode/Cursor, Go extensions). Install Fyne prerequisites (X11 libraries for development). Configure the workspace according to `1._RULES.md—Operating_Rules_for_This_Project-(Claude_Code).md` (no Git in Linux). Verify cross-compilation to Windows works with a simple "Hello World" Go binary. Set up logging directories (`logs/`) and configure log rotation. Document all versions and paths for reproducibility.
 
 **Deliverables:**
 - Go environment configured and verified
-- Node.js and npm installed
+- Fyne prerequisites installed (X11 development libraries)
 - Backend compiles successfully (`go build` and `go test ./...` pass)
 - Cross-compilation to Windows verified
 - VSCode/Cursor workspace configured
@@ -74,41 +84,40 @@ Build a minimal desktop GUI application using Fyne to validate the "pure Go desk
 
 ---
 
-### Step 3: Svelte Proof-of-Concept
+### Step 3: Custom Theme Implementation
 
-**File:** `phase0-step3-svelte-poc.md`
-**Duration:** 3-4 days
-**Dependencies:** Step 1
+**File:** `phase0-step3-custom-theme.md`
+**Duration:** 1-2 days
+**Dependencies:** Step 2
 
-Initialize a SvelteKit project with the static adapter. Create a minimal settings page with day/night mode toggle. Build the UI as static files. Implement a simple Go HTTP server that serves the Svelte static files using Go's `embed` package. Create one API endpoint (`GET /api/settings`) that returns settings from the database. The Svelte app should fetch and display this data. Implement theme toggle with CSS variables and localStorage persistence. Cross-compile the combined app (Go server + embedded Svelte files) to Windows .exe. Verify it opens a browser to localhost:8080 and the UI loads. This POC proves the Go + Svelte architecture works and demonstrates the superior visual capabilities that justify the Svelte choice.
+Implement custom Fyne theme with British Racing Green accent color (#00352B). Create both day mode and dark mode color schemes. Define custom fonts, spacing, and widget styles. Implement theme toggle functionality with state persistence. Test theme on all standard Fyne widgets to ensure consistency. This step establishes the visual identity of the application.
 
 **Deliverables:**
-- SvelteKit project with static adapter configured
-- Day/night mode toggle working
-- Go HTTP server serves embedded Svelte files
-- One working API endpoint (`GET /api/settings`)
-- Theme persists to localStorage
-- Cross-compiles to single Windows .exe
-- Opens browser automatically on startup
-- Documentation: Svelte POC results, architecture validation
+- Custom Fyne theme with British Racing Green
+- Day mode color scheme defined
+- Dark mode color scheme defined
+- Theme toggle button working
+- Theme preference persists between sessions
+- All widgets use custom theme
+- Documentation: Theme implementation guide
 
 ---
 
-### Step 4: Technology Decision & Build Pipeline
+### Step 4: Build Pipeline & Cross-Compilation
 
-**File:** `phase0-step4-decision-pipeline.md`
-**Duration:** 1-2 days
+**File:** `phase0-step4-build-pipeline.md`
+**Duration:** 1 day
 **Dependencies:** Steps 2, 3
 
-Compare Fyne POC vs Svelte POC based on visual appeal, development speed, maintainability, and alignment with project goals (sleek, modern, gradient-heavy UI). Make the final decision (expected: Svelte). Document the decision rationale. Set up the production build pipeline with scripts: `sync-ui-to-go.sh` (copies Svelte build output to Go embed directory), `build-go-windows.sh` (cross-compiles to Windows .exe), and `export-for-windows.sh` (creates zip for Windows handoff per RULES.md). Create initial frontend project structure (`ui/src/lib/components/`, `ui/src/lib/stores/`, `ui/src/routes/`, etc.). Configure TailwindCSS with the custom color system and gradient utilities from the visual design philosophy. Test the complete build pipeline end-to-end.
+Establish the production build pipeline for Fyne. Create scripts: `build-windows.sh` (cross-compiles Linux → Windows .exe with Fyne bundling), and `export-for-windows.sh` (creates zip for Windows handoff per RULES.md). Create GUI project structure (`internal/gui/screens/`, `internal/gui/widgets/`, `internal/gui/state/`, `internal/gui/theme/`). Test the complete build pipeline end-to-end: build on Linux, transfer to Windows, verify execution. Configure logging for GUI events. Document the build process.
 
 **Deliverables:**
-- Technology decision documented (Fyne vs Svelte)
-- Build scripts created and tested
-- Frontend project structure established
-- TailwindCSS configured with custom theme
+- Build scripts created and tested (Linux → Windows cross-compile)
+- GUI project structure established in `internal/gui/`
+- Cross-compilation verified working
 - Export-to-Windows workflow validated
-- Documentation: Build pipeline guide, technology decision record
+- Logging configured for GUI events
+- Documentation: Build pipeline guide, Fyne architecture decisions
 
 ---
 
@@ -118,23 +127,23 @@ Compare Fyne POC vs Svelte POC based on visual appeal, development speed, mainta
 **Goal:** Build core navigation and implement daily workflow starting point
 **Success:** User can scan FINVIZ, import candidates, view dashboard
 
-### Step 5: Backend API Foundation
+### Step 5: Tab Navigation & State Management
 
-**File:** `phase1-step5-backend-api.md`
+**File:** `phase1-step5-navigation-state.md`
 **Duration:** 2 days
 **Dependencies:** Phase 0 complete
 
-Create the HTTP API layer that wraps the existing domain logic. Set up the HTTP server using Go's standard library or Gin/Chi. Implement CORS middleware for development. Create the initial API endpoints needed for Phase 1: `GET /api/settings`, `GET /api/positions`, `GET /api/candidates`, `POST /api/candidates/scan`, `POST /api/candidates/import`. Each endpoint should be a thin wrapper around existing domain/storage functions. Implement consistent JSON response format with error handling. **Add comprehensive structured logging:** log every API request (method, path, params, correlation ID), response (status, duration, size), and errors (full stack trace, context). Log to both file (`logs/tf-engine.log`) and console. Include performance metrics for each request. Set up log rotation (daily). Write API integration tests. Document all endpoints with example requests/responses.
+Implement the main tab navigation structure using Fyne's AppTabs widget. Create 6 main tabs: Dashboard, Checklist, Position Sizing, Heat Check, Trade Entry, Calendar. Set up centralized application state management using a Go struct (`AppState`) that holds database connection, current settings, positions, candidates, and UI state. Implement state update callbacks to refresh UI when data changes. **Add comprehensive logging:** log every tab switch, state update, database operation, and user action with timestamps and context. Log to `logs/tf-gui.log` with rotation. Create helper functions for common state operations (LoadSettings, LoadPositions, LoadCandidates). Test navigation between all tabs.
 
 **Deliverables:**
-- HTTP server configured and running
-- 5 API endpoints implemented and tested
-- Error handling middleware
-- **Comprehensive request/response logging with correlation IDs**
-- **Performance metrics logged (request duration, DB query time)**
+- Tab navigation working (6 main tabs using Fyne AppTabs)
+- AppState struct defined and initialized with database connection
+- State management callbacks implemented
+- **Comprehensive logging of tab switches and state changes**
+- **Performance metrics logged (database query times)**
 - **Log rotation configured (daily)**
-- API integration tests passing
-- Documentation: API reference guide, logging format specification
+- Unit tests for state management
+- Documentation: State management guide, logging format specification
 
 ---
 
