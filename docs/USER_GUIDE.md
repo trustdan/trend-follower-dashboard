@@ -1,7 +1,7 @@
 # TF-Engine User Guide
 
-**Version:** 1.0.0
-**Last Updated:** 2025-10-29
+**Version:** 2.0.0
+**Last Updated:** 2025-10-30
 
 ---
 
@@ -14,11 +14,12 @@
 5. [Understanding the Banner](#understanding-the-banner)
 6. [The 5 Gates Explained](#the-5-gates-explained)
 7. [Screen Reference](#screen-reference)
-8. [TradingView Integration](#tradingview-integration)
-9. [Theme Customization](#theme-customization)
-10. [Tips & Best Practices](#tips--best-practices)
-11. [Troubleshooting](#troubleshooting)
-12. [FAQ](#faq)
+8. [Trade Sessions](#trade-sessions) ⭐ NEW
+9. [TradingView Integration](#tradingview-integration)
+10. [Theme Customization](#theme-customization)
+11. [Tips & Best Practices](#tips--best-practices)
+12. [Troubleshooting](#troubleshooting)
+13. [FAQ](#faq)
 
 ---
 
@@ -1129,6 +1130,288 @@ The 5 gates are the **final validation** before you can save a GO decision. They
 
 ---
 
+## Trade Sessions
+
+### What Are Trade Sessions?
+
+**Trade Sessions** provide a unified, cohesive workflow for evaluating each trade setup from start to finish. Instead of disconnected tabs with isolated data entry, each trade is now tracked as a single **session** that flows through all 5 gates sequentially.
+
+**Key Benefits:**
+- **Unified Context:** All tabs (Checklist, Sizing, Heat, Entry) share the same session data
+- **Progress Tracking:** Visual progress bar shows which gates are complete
+- **Full Audit Trail:** Every evaluation is logged in database with complete history
+- **Resume Later:** Start evaluation, save progress, return later to continue
+- **No Lost Data:** Ticker, strategy, and banner state persist across tabs
+
+### Session Workflow
+
+#### 1. Start New Trade Session
+
+Click **"Start New Trade"** button (or press **Ctrl+N**):
+
+![Start New Trade Button](screenshots/start-new-trade-btn.png)
+
+**New Trade Dialog:**
+```
+┌────────────────────────────────┐
+│ Start New Trade Session        │
+├────────────────────────────────┤
+│ Strategy:                      │
+│  ⚫ Long Breakout (55-bar high) │
+│  ○ Short Breakout (55-bar low) │
+│  ○ Custom (manual setup)       │
+│                                │
+│ Ticker (optional): [AAPL___]   │
+│                                │
+│ [Create Session] [Cancel]      │
+└────────────────────────────────┘
+```
+
+**Choose strategy first,** then optionally enter ticker. The session remembers both throughout the entire evaluation process.
+
+#### 2. Session Bar (Always Visible)
+
+Once a session is active, the **Session Bar** appears at the top:
+
+```
+╔════════════════════════════════════════════════════╗
+║ Session #47 • LONG_BREAKOUT • AAPL                 ║
+║ ✅ Checklist | ⏳ Sizing | ○ Heat | ○ Entry         ║
+╚════════════════════════════════════════════════════╝
+```
+
+**Progress Indicators:**
+- ✅ Green checkmark = Gate completed
+- ⏳ Hourglass = Currently working on this gate
+- ○ Hollow circle = Not started yet
+
+**Session Number:** Random 1-99 number for easy reference ("What's the status on Session #47?")
+
+#### 3. Sequential Gate Flow
+
+**All tabs share the same session:**
+
+**Checklist Tab:**
+- Ticker auto-filled from session
+- Complete evaluation → Banner turns GREEN
+- Click "Save Evaluation" → Session updated
+- Progress: ✅ Checklist completed
+
+**Position Sizing Tab:**
+- Ticker and banner pre-filled from Checklist
+- Calculate position size
+- Click "Save Position Plan" → Session updated
+- Progress: ✅ Checklist | ✅ Sizing
+
+**Heat Check Tab:**
+- Risk amount pre-filled from Sizing
+- Check portfolio/bucket heat
+- If within caps → Session updated
+- Progress: ✅ Checklist | ✅ Sizing | ✅ Heat
+
+**Trade Entry Tab:**
+- All data shown in summary
+- Run 5-gate check
+- If all pass → Save GO/NO-GO decision
+- Progress: ✅ Checklist | ✅ Sizing | ✅ Heat | ✅ Entry
+- **Session marked COMPLETED**
+
+#### 4. Read-Only Sessions
+
+Once a session is COMPLETED (GO or NO-GO decision saved):
+- **Session becomes READ-ONLY** 🔒
+- All inputs disabled
+- Cannot edit ticker, recalculate sizing, or change data
+- Data preserved for audit trail
+
+**Why read-only?**
+- Ensures immutable audit trail
+- Prevents post-decision tampering
+- Forces discipline (can't revise after the fact)
+
+**Want to re-evaluate?** Clone the session (see Session History below).
+
+#### 5. Resume Session
+
+Have multiple trades in progress? Click **"Resume Session ▼"** (or press **Ctrl+R**):
+
+```
+[Resume Session ▼]
+  ├─ #47 (AAPL - Long)     ✅ ✅ ✅ ⏳  [2 min ago]
+  ├─ #32 (TSLA - Short)    ✅ ⏳ ○ ○   [2 hours ago]
+  └─ #18 (NVDA - Long)     ✅ ✅ ○ ○   [yesterday]
+```
+
+**Select a session** → Loads that session and navigates to current step (where you left off).
+
+**Perfect for:**
+- Evaluating multiple setups in one morning
+- Starting evaluation, then returning after market close
+- Comparing different tickers side-by-side
+
+### Session History
+
+Navigate to **📜 Session History** tab (or press **Ctrl+H**) to view all past sessions:
+
+![Session History Screenshot](screenshots/session-history.png)
+
+**Features:**
+- **Filter by status:** All, COMPLETED, DRAFT, ABANDONED
+- **Search by ticker:** Find all AAPL sessions
+- **View details:** Click "👁 View" to see full session summary
+- **Clone session:** Click "📋 Clone" to create new draft with same ticker/strategy
+
+**Use Cases:**
+1. **Review past evaluations:** What was my reasoning for AAPL trade on Nov 5?
+2. **Learn from mistakes:** Which sessions had RED banners that I pushed through anyway?
+3. **Compare setups:** How did AAPL session #47 differ from AAPL session #62?
+4. **Re-evaluate:** Clone a NO-GO session after conditions change
+
+#### Clone Session Feature
+
+**Why clone?**
+- Market conditions changed (was NO-GO, now looks like GO)
+- Want to re-evaluate same ticker with fresh analysis
+- Practice the workflow on a familiar setup
+
+**How to clone:**
+1. Navigate to Session History
+2. Select session to clone (any status: COMPLETED, DRAFT, etc.)
+3. Click "📋 Clone"
+4. **New DRAFT session created** with:
+   - Same ticker
+   - Same strategy
+   - All gates reset (not completed)
+   - Fresh session number
+5. Immediately work on the new session
+
+### Keyboard Shortcuts
+
+Power users can work faster with keyboard shortcuts:
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| **Ctrl+N** | New Trade | Opens "Start New Trade" dialog |
+| **Ctrl+R** | Resume Session | Opens "Resume Session" dropdown |
+| **Ctrl+H** | Session History | Navigates to Session History tab |
+
+### Session Lifecycle
+
+```
+┌────────────────────────────────────────────────────────┐
+│                                                        │
+│  1. Start New → Session #47 created (DRAFT)           │
+│                                                        │
+│  2. Checklist → ✅ Completed (banner GREEN)            │
+│                                                        │
+│  3. Sizing → ✅ Completed (25 shares, $75 risk)        │
+│                                                        │
+│  4. Heat Check → ✅ Completed (within caps)            │
+│                                                        │
+│  5. Trade Entry → ✅ Completed (GO decision saved)     │
+│                                                        │
+│  6. Status = COMPLETED, READ-ONLY 🔒                  │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+```
+
+**Alternate paths:**
+- **Abandoned:** Started session, never completed → Marked ABANDONED after 7 days
+- **NO-GO:** Completed evaluation, saved NO-GO decision → COMPLETED but decision = NO-GO
+
+### Benefits for Discipline
+
+Trade Sessions align perfectly with TF-Engine's anti-impulsivity philosophy:
+
+| Anti-Impulsivity Principle | How Sessions Support It |
+|----------------------------|-------------------------|
+| **Trade the tide, not the splash** | Strategy selected FIRST, then find setups that match |
+| **Friction where it matters** | Must create session before evaluating (intentional step) |
+| **Nudge for better trades** | Progress bar shows incomplete gates, nudges completion |
+| **Immediate feedback** | Session bar shows status in real-time (✅ ⏳ ○) |
+| **Journal while deciding** | Full session history = automatic journal of every evaluation |
+
+**What Sessions Prevent:**
+- ❌ Impulsive trading: "I'll just quickly size this without checking the banner"
+- ❌ Lost context: "Wait, was this AAPL or TSLA?"
+- ❌ Skipping gates: "I'll check heat later" (no, you check it NOW)
+- ❌ No audit trail: "What was my reasoning 2 weeks ago?"
+
+**What Sessions Enable:**
+- ✅ Sequential workflow: Checklist → Sizing → Heat → Entry (cannot skip)
+- ✅ Cohesive analysis: All tabs work on the same trade
+- ✅ Full history: Every decision logged with all gate data
+- ✅ Resumable sessions: Start today, finish tomorrow
+- ✅ Strategy context: Know if evaluating Long vs Short breakout
+
+### Session Best Practices
+
+#### 1. One Session Per Setup
+
+Don't reuse sessions for different tickers. Each ticker gets its own session.
+
+**Good:**
+- Session #47: AAPL (Long Breakout)
+- Session #48: TSLA (Short Breakout)
+
+**Bad:**
+- Session #47: AAPL, then change ticker to TSLA mid-evaluation ❌
+
+#### 2. Complete Sessions Within 24 Hours
+
+Start a session when you have time to complete it (15-20 minutes total):
+- Checklist: 5 min
+- Position Sizing: 3 min
+- Heat Check: 2 min
+- Trade Entry: 5 min (includes 2-min timer)
+
+**If you can't finish:** Resume later, but don't leave sessions open for days. Market conditions change, and stale analysis is dangerous.
+
+#### 3. Save NO-GO Decisions
+
+When a trade fails the gates, **save it as NO-GO** with a reason. Don't just abandon the session.
+
+**Why?**
+- Creates record of what you DON'T trade
+- Prevents re-evaluating same rejected ticker
+- Documents discipline (you followed the rules)
+
+#### 4. Review History Weekly
+
+**Sunday Evening Routine:**
+- Navigate to Session History
+- Filter: COMPLETED sessions from last week
+- Review: Which had GO decisions? Which had NO-GO?
+- Learn: What patterns emerge? Are you being too conservative or too aggressive?
+
+#### 5. Clone Wisely
+
+Clone sessions only when:
+- Market conditions meaningfully changed
+- You want to compare different entry points
+- Practicing the workflow
+
+**Don't clone to bypass gates.** If original session was NO-GO for heat caps, cloning won't magically fix that.
+
+### Troubleshooting Sessions
+
+**Q: Session bar not showing?**
+**A:** No active session. Click "Start New Trade" to create one.
+
+**Q: Can't edit ticker in tab?**
+**A:** Ticker is locked after Checklist save. This is intentional (prevents changing mid-evaluation). Start new session if wrong ticker.
+
+**Q: Session stuck on ⏳ for a gate I completed?**
+**A:** Refresh the page (F5). Session state should reload from database.
+
+**Q: Lost my session?**
+**A:** Sessions persist in database. Click "Resume Session ▼" to find it.
+
+**Q: Want to delete a session?**
+**A:** Not currently supported (for audit trail integrity). Sessions auto-archive after 30 days of inactivity.
+
+---
+
 ## TradingView Integration
 
 TF-Engine integrates with TradingView for signal verification. You verify breakouts manually using the Ed-Seykota Pine Script.
@@ -1893,8 +2176,8 @@ If proprietary: Feature requests and bug reports welcome.
 - Issues: [your-issues-url]
 - Email: [your-support-email]
 
-**Version:** 1.0.0
-**Last Updated:** 2025-10-29
+**Version:** 2.0.0
+**Last Updated:** 2025-10-30
 **System:** TF-Engine - Trend Following Engine
 **Philosophy:** Trade the tide, not the splash.
 

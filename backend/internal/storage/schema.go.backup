@@ -1,6 +1,6 @@
 package storage
 
-// schema defines the complete database structure for Trading Engine v3 with Options Trading (Phase 2 complete)
+// schema defines the complete database structure for Trading Engine v3
 const schema = `
 -- Settings table: key-value configuration
 CREATE TABLE IF NOT EXISTS settings (
@@ -73,7 +73,7 @@ CREATE INDEX IF NOT EXISTS idx_decisions_date ON decisions(date);
 CREATE INDEX IF NOT EXISTS idx_decisions_ticker ON decisions(ticker);
 CREATE INDEX IF NOT EXISTS idx_decisions_created_at ON decisions(created_at DESC);
 
--- Positions table: Open and closed trades (with options metadata from Phase 1)
+-- Positions table: Open and closed trades
 CREATE TABLE IF NOT EXISTS positions (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	ticker TEXT NOT NULL,
@@ -89,21 +89,6 @@ CREATE TABLE IF NOT EXISTS positions (
 	outcome TEXT,
 	pnl REAL,
 	decision_id INTEGER,
-	instrument_type TEXT DEFAULT 'STOCK' CHECK (instrument_type IN ('STOCK', 'OPTION')),
-	options_strategy TEXT,
-	entry_date TEXT,
-	primary_expiration_date TEXT,
-	dte INTEGER,
-	legs_json TEXT,
-	net_debit REAL,
-	max_profit REAL,
-	max_loss REAL,
-	breakeven_lower REAL,
-	breakeven_upper REAL,
-	underlying_at_entry REAL,
-	max_units INTEGER DEFAULT 4,
-	current_units INTEGER DEFAULT 1,
-	add_step_n REAL DEFAULT 0.5,
 	opened_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	closed_at DATETIME,
 	FOREIGN KEY (decision_id) REFERENCES decisions(id)
@@ -139,7 +124,7 @@ CREATE TABLE IF NOT EXISTS bucket_cooldowns (
 
 CREATE INDEX IF NOT EXISTS idx_bucket_cooldowns_bucket ON bucket_cooldowns(bucket, active);
 
--- Trade sessions table: cohesive workflow and provenance tracking (with OPTIONS support)
+-- Trade sessions table: cohesive workflow and provenance tracking
 CREATE TABLE IF NOT EXISTS trade_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_num INTEGER GENERATED ALWAYS AS (id) STORED UNIQUE,
@@ -152,28 +137,6 @@ CREATE TABLE IF NOT EXISTS trade_sessions (
     scan_date TEXT,
     status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'EVALUATING', 'COMPLETED', 'ABANDONED')),
     current_step TEXT NOT NULL DEFAULT 'CHECKLIST' CHECK (current_step IN ('CHECKLIST', 'SIZING', 'HEAT', 'ENTRY')),
-    instrument_type TEXT DEFAULT 'STOCK' CHECK (instrument_type IN ('STOCK', 'OPTION')),
-    options_strategy TEXT,
-    entry_date TEXT,
-    primary_expiration_date TEXT,
-    dte INTEGER,
-    roll_threshold_dte INTEGER DEFAULT 21,
-    time_exit_mode TEXT DEFAULT 'Close' CHECK (time_exit_mode IN ('None', 'Close', 'Roll')),
-    legs_json TEXT,
-    net_debit REAL,
-    max_profit REAL,
-    max_loss REAL,
-    breakeven_lower REAL,
-    breakeven_upper REAL,
-    underlying_at_entry REAL,
-    max_units INTEGER DEFAULT 4,
-    add_step_n REAL DEFAULT 0.5,
-    current_units INTEGER DEFAULT 0,
-    add_price_1 REAL,
-    add_price_2 REAL,
-    add_price_3 REAL,
-    entry_lookback INTEGER,
-    exit_lookback INTEGER DEFAULT 10,
     checklist_completed INTEGER NOT NULL DEFAULT 0 CHECK (checklist_completed IN (0,1)),
     checklist_banner TEXT,
     checklist_missing_count INTEGER DEFAULT 0,
@@ -233,52 +196,6 @@ FOR EACH ROW
 WHEN NEW.updated_at = OLD.updated_at
 BEGIN
     UPDATE trade_sessions
-    SET updated_at = CURRENT_TIMESTAMP
-    WHERE id = NEW.id;
-END;
-
--- Trade history table: Calendar view support (Phase 1)
-CREATE TABLE IF NOT EXISTS trade_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER,
-    ticker TEXT NOT NULL,
-    strategy TEXT NOT NULL,
-    breakout_system TEXT,
-    options_strategy TEXT,
-    instrument_type TEXT DEFAULT 'STOCK',
-    sector TEXT,
-    bucket TEXT,
-    entry_date TEXT NOT NULL,
-    expiration_date TEXT,
-    exit_date TEXT,
-    status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'CLOSED', 'ROLLED')),
-    dte INTEGER,
-    contracts INTEGER,
-    shares INTEGER,
-    risk_dollars REAL,
-    entry_price REAL,
-    exit_price REAL,
-    pnl REAL,
-    outcome TEXT CHECK (outcome IN ('WIN', 'LOSS', 'SCRATCH')),
-    notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (session_id) REFERENCES trade_sessions(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_trade_history_entry_date ON trade_history(entry_date);
-CREATE INDEX IF NOT EXISTS idx_trade_history_sector ON trade_history(sector, entry_date);
-CREATE INDEX IF NOT EXISTS idx_trade_history_bucket ON trade_history(bucket, entry_date);
-CREATE INDEX IF NOT EXISTS idx_trade_history_status ON trade_history(status);
-CREATE INDEX IF NOT EXISTS idx_trade_history_ticker ON trade_history(ticker);
-CREATE INDEX IF NOT EXISTS idx_trade_history_session ON trade_history(session_id);
-
-CREATE TRIGGER IF NOT EXISTS trg_trade_history_updated_at
-AFTER UPDATE ON trade_history
-FOR EACH ROW
-WHEN NEW.updated_at = OLD.updated_at
-BEGIN
-    UPDATE trade_history
     SET updated_at = CURRENT_TIMESTAMP
     WHERE id = NEW.id;
 END;

@@ -14,15 +14,39 @@ import (
 )
 
 func buildChecklistScreen(state *AppState) fyne.CanvasObject {
+	// Session check: require active session
+	if state.currentSession == nil {
+		return showNoSessionPrompt(state, "Checklist")
+	}
+
 	// Title
 	title := canvas.NewText("Checklist - 5 Gates Evaluation", nil)
 	title.TextSize = 24
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	// Ticker entry
+	// Session info with read-only indicator
+	sessionInfoText := fmt.Sprintf(
+		"Session #%d • %s • %s",
+		state.currentSession.SessionNum,
+		formatStrategyDisplay(state.currentSession.Strategy),
+		state.currentSession.Ticker,
+	)
+	if state.currentSession.Status == "COMPLETED" {
+		sessionInfoText = "🔒 READ-ONLY: " + sessionInfoText
+	}
+	sessionInfo := widget.NewLabel(sessionInfoText)
+	sessionInfo.TextStyle = fyne.TextStyle{Bold: true}
+
+	// Ticker entry (auto-filled from session)
 	tickerLabel := widget.NewLabel("Ticker Symbol:")
 	tickerEntry := widget.NewEntry()
+	tickerEntry.SetText(state.currentSession.Ticker)
 	tickerEntry.SetPlaceHolder("AAPL")
+
+	// Disable ticker entry if session is completed
+	if state.currentSession.Status == "COMPLETED" {
+		tickerEntry.Disable()
+	}
 
 	// Banner (initially gray)
 	bannerRect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
@@ -144,6 +168,16 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	resultsLabel := widget.NewLabel("")
 	resultsLabel.Wrapping = fyne.TextWrapWord
 
+	// Next button (shown after GREEN banner)
+	nextBtn := widget.NewButton("Next: Position Sizing →", func() {
+		ShowStyledInformation("Next Step",
+			"Please use the tab bar to navigate to the Position Sizing tab.\n\n"+
+				"Your checklist results have been saved to Session #"+fmt.Sprintf("%d", state.currentSession.SessionNum),
+			state.window)
+	})
+	nextBtn.Importance = widget.HighImportance
+	nextBtn.Hide() // Hidden initially
+
 	// Evaluate button
 	evaluateBtn := widget.NewButton("Evaluate Checklist", func() {
 		ticker := tickerEntry.Text
@@ -184,6 +218,38 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 		bannerRect.Refresh()
 		bannerText.Refresh()
 
+		// Calculate quality score from optional checks
+		qualityScore := 0
+		if regimeCheck.Checked {
+			qualityScore++
+		}
+		if chaseCheck.Checked {
+			qualityScore++
+		}
+		if journalCheck.Checked {
+			qualityScore++
+		}
+
+		// Update session in database
+		err = state.db.UpdateSessionChecklist(
+			state.currentSession.ID,
+			result.Banner,
+			result.MissingCount,
+			qualityScore,
+		)
+		if err != nil {
+			resultsLabel.SetText(fmt.Sprintf("❌ Failed to save session: %v", err))
+			return
+		}
+
+		// Reload session to get updated state
+		updatedSession, err := state.db.GetSession(state.currentSession.ID)
+		if err != nil {
+			resultsLabel.SetText(fmt.Sprintf("❌ Failed to reload session: %v", err))
+			return
+		}
+		state.SetCurrentSession(updatedSession)
+
 		// Update results
 		resultsText := fmt.Sprintf("Banner: %s\nMissing Required: %d\n",
 			result.Banner, result.MissingCount)
@@ -197,11 +263,20 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 
 		if result.Banner == "GREEN" {
 			resultsText += "\n✓ All gates passed! 2-minute cooloff timer started."
+			resultsText += fmt.Sprintf("\n✓ Session #%d updated - ready for Position Sizing", state.currentSession.SessionNum)
+			nextBtn.Show()
+		} else {
+			nextBtn.Hide()
 		}
 
 		resultsLabel.SetText(resultsText)
 	})
 	evaluateBtn.Importance = widget.HighImportance
+
+	// Disable evaluate button if session is completed
+	if state.currentSession.Status == "COMPLETED" {
+		evaluateBtn.Disable()
+	}
 
 	// Reset button
 	resetBtn := widget.NewButton("Reset", func() {
@@ -224,11 +299,12 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	})
 	resetBtn.Importance = widget.HighImportance
 
-	buttons := container.NewHBox(evaluateBtn, resetBtn)
+	buttons := container.NewHBox(evaluateBtn, resetBtn, nextBtn)
 
 	// Layout
 	content := container.NewVBox(
 		container.NewPadded(title),
+		container.NewPadded(sessionInfo),
 		banner,
 		widget.NewSeparator(),
 		tickerLabel,

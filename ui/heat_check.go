@@ -13,10 +13,30 @@ import (
 )
 
 func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
+	// Session check: require active session
+	if state.currentSession == nil {
+		return showNoSessionPrompt(state, "Heat Check")
+	}
+
+	// Prerequisite check: sizing must be completed
+	if !state.currentSession.SizingCompleted {
+		return showPrerequisiteError(state, "Position Sizing", "Heat Check")
+	}
+
 	// Title
 	title := canvas.NewText("Heat Check - Portfolio Risk Management", nil)
 	title.TextSize = 24
 	title.TextStyle = fyne.TextStyle{Bold: true}
+
+	// Session info
+	sessionInfo := widget.NewLabel(fmt.Sprintf(
+		"Session #%d • %s • %s • Risk: $%.2f",
+		state.currentSession.SessionNum,
+		formatStrategyDisplay(state.currentSession.Strategy),
+		state.currentSession.Ticker,
+		state.currentSession.SizingRiskDollars,
+	))
+	sessionInfo.TextStyle = fyne.TextStyle{Bold: true}
 
 	// Explanation panel
 	explanationCard := buildHeatCheckExplanation()
@@ -80,6 +100,8 @@ func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
 
 	riskLabel := widget.NewLabel("Risk Amount ($):")
 	riskEntry := widget.NewEntry()
+	// Auto-fill from session
+	riskEntry.SetText(fmt.Sprintf("%.2f", state.currentSession.SizingRiskDollars))
 	riskEntry.SetPlaceHolder("750.00")
 
 	bucketSelectLabel := widget.NewLabel("Sector Bucket:")
@@ -89,7 +111,17 @@ func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
 	testResultLabel := widget.NewLabel("")
 	testResultLabel.Wrapping = fyne.TextWrapWord
 
-	testBtn := widget.NewButton("Check If Trade Allowed", func() {
+	// Next button (shown after successful heat check)
+	nextBtn := widget.NewButton("Next: Trade Entry →", func() {
+		ShowStyledInformation("Next Step",
+			"Please use the tab bar to navigate to the Trade Entry tab.\n\n"+
+				"Your heat check has been saved to Session #"+fmt.Sprintf("%d", state.currentSession.SessionNum),
+			state.window)
+	})
+	nextBtn.Importance = widget.HighImportance
+	nextBtn.Hide() // Hidden initially
+
+	testBtn := widget.NewButton("Check Heat", func() {
 		riskStr := riskEntry.Text
 		if riskStr == "" {
 			testResultLabel.SetText("❌ Please enter risk amount")
@@ -135,6 +167,37 @@ func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
 			return
 		}
 
+		// Determine status
+		heatStatus := "OK"
+		if !result.Allowed {
+			heatStatus = "REJECT"
+		}
+
+		// Update session in database
+		err = state.db.UpdateSessionHeat(
+			state.currentSession.ID,
+			heatStatus,
+			bucket,
+			result.CurrentPortfolioHeat,
+			result.NewPortfolioHeat,
+			result.PortfolioCap,
+			result.CurrentBucketHeat,
+			result.NewBucketHeat,
+			result.BucketCap,
+		)
+		if err != nil {
+			testResultLabel.SetText(fmt.Sprintf("❌ Failed to save session: %v", err))
+			return
+		}
+
+		// Reload session to get updated state
+		updatedSession, err := state.db.GetSession(state.currentSession.ID)
+		if err != nil {
+			testResultLabel.SetText(fmt.Sprintf("❌ Failed to reload session: %v", err))
+			return
+		}
+		state.SetCurrentSession(updatedSession)
+
 		if result.Allowed {
 			testResultLabel.SetText(fmt.Sprintf(`✓ TRADE ALLOWED
 
@@ -142,8 +205,12 @@ New Portfolio Heat: $%.2f / $%.2f (%.1f%%)
 New Bucket Heat (%s): $%.2f / $%.2f (%.1f%%)
 
 Both caps OK!
+
+✓ Session #%d updated - ready for Trade Entry
 `, result.NewPortfolioHeat, result.PortfolioCap, result.PortfolioHeatPct,
-				bucket, result.NewBucketHeat, result.BucketCap, result.BucketHeatPct))
+				bucket, result.NewBucketHeat, result.BucketCap, result.BucketHeatPct,
+				state.currentSession.SessionNum))
+			nextBtn.Show()
 		} else {
 			testResultLabel.SetText(fmt.Sprintf(`✗ TRADE REJECTED
 
@@ -158,18 +225,28 @@ Current Bucket Heat (%s): $%.2f
 New Bucket Heat: $%.2f
 Bucket Cap: $%.2f
 Overage: $%.2f
+
+Session #%d updated - resolve heat issues before proceeding
 `, result.RejectionReason,
 				result.CurrentPortfolioHeat, result.NewPortfolioHeat, result.PortfolioCap,
 				result.PortfolioOverage,
 				bucket, result.CurrentBucketHeat, result.NewBucketHeat, result.BucketCap,
-				result.BucketOverage))
+				result.BucketOverage,
+				state.currentSession.SessionNum))
+			nextBtn.Hide()
 		}
 	})
 	testBtn.Importance = widget.HighImportance
 
+	// Disable heat check button if session is completed
+	if state.currentSession.Status == "COMPLETED" {
+		testBtn.Disable()
+	}
+
 	// Layout
 	content := container.NewVBox(
 		container.NewPadded(title),
+		container.NewPadded(sessionInfo),
 		explanationCard,
 		widget.NewSeparator(),
 		settingsInfo,
@@ -186,7 +263,7 @@ Overage: $%.2f
 		riskEntry,
 		bucketSelectLabel,
 		bucketEntry,
-		testBtn,
+		container.NewHBox(testBtn, nextBtn),
 		widget.NewSeparator(),
 		testResultLabel,
 	)

@@ -24,6 +24,23 @@ type Position struct {
 	DecisionID  int       `json:"decision_id"`
 	OpenedAt    time.Time `json:"opened_at"`
 	ClosedAt    time.Time `json:"closed_at,omitempty"`
+
+	// Options Trading Metadata
+	InstrumentType        string  `json:"instrument_type,omitempty"`
+	OptionsStrategy       string  `json:"options_strategy,omitempty"`
+	EntryDate             string  `json:"entry_date,omitempty"`
+	PrimaryExpirationDate string  `json:"primary_expiration_date,omitempty"`
+	DTE                   int     `json:"dte,omitempty"`
+	LegsJSON              string  `json:"legs_json,omitempty"`
+	NetDebit              float64 `json:"net_debit,omitempty"`
+	MaxProfit             float64 `json:"max_profit,omitempty"`
+	MaxLoss               float64 `json:"max_loss,omitempty"`
+	BreakevenLower        float64 `json:"breakeven_lower,omitempty"`
+	BreakevenUpper        float64 `json:"breakeven_upper,omitempty"`
+	UnderlyingAtEntry     float64 `json:"underlying_at_entry,omitempty"`
+	MaxUnits              int     `json:"max_units,omitempty"`
+	CurrentUnits          int     `json:"current_units,omitempty"`
+	AddStepN              float64 `json:"add_step_n,omitempty"`
 }
 
 // OpenPosition creates a new position from a GO decision
@@ -362,4 +379,101 @@ func (db *DB) CalculateBucketHeat(bucket string) (float64, error) {
 	}
 
 	return heat.Float64, nil
+}
+
+// CreatePositionFromSession creates a new position from a completed session with GO decision
+func (db *DB) CreatePositionFromSession(session *TradeSession) (*Position, error) {
+	if session == nil {
+		return nil, fmt.Errorf("session cannot be nil")
+	}
+
+	if session.EntryDecision != "GO" {
+		return nil, fmt.Errorf("cannot create position from non-GO decision: %s", session.EntryDecision)
+	}
+
+	if !session.SizingCompleted {
+		return nil, fmt.Errorf("session sizing not completed")
+	}
+
+	// Create position
+	query := `
+		INSERT INTO positions (
+			ticker, entry_price, current_stop, initial_stop,
+			shares, risk_dollars, bucket, status, decision_id,
+			instrument_type, options_strategy, entry_date, primary_expiration_date,
+			dte, legs_json, net_debit, max_profit, max_loss,
+			breakeven_lower, breakeven_upper, underlying_at_entry,
+			max_units, current_units, add_step_n, opened_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	// Decision ID from session (may be 0 if not linked to old decisions table)
+	decisionID := 0
+	if session.EntryDecisionID != nil {
+		decisionID = *session.EntryDecisionID
+	}
+
+	result, err := db.conn.Exec(query,
+		session.Ticker,
+		session.SizingEntryPrice,
+		session.SizingInitialStop,
+		session.SizingInitialStop,
+		session.SizingShares,
+		session.SizingRiskDollars,
+		session.HeatBucket,
+		decisionID,
+		session.InstrumentType,
+		session.OptionsStrategy,
+		session.EntryDate,
+		session.PrimaryExpirationDate,
+		session.DTE,
+		session.LegsJSON,
+		session.NetDebit,
+		session.MaxProfit,
+		session.MaxLoss,
+		session.BreakevenLower,
+		session.BreakevenUpper,
+		session.UnderlyingAtEntry,
+		session.MaxUnits,
+		session.CurrentUnits,
+		session.AddStepN,
+		time.Now(),
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create position from session: %w", err)
+	}
+
+	id, _ := result.LastInsertId()
+
+	position := &Position{
+		ID:                    int(id),
+		Ticker:                session.Ticker,
+		EntryPrice:            session.SizingEntryPrice,
+		CurrentStop:           session.SizingInitialStop,
+		InitialStop:           session.SizingInitialStop,
+		Shares:                session.SizingShares,
+		RiskDollars:           session.SizingRiskDollars,
+		Bucket:                session.HeatBucket,
+		Status:                "OPEN",
+		DecisionID:            decisionID,
+		InstrumentType:        session.InstrumentType,
+		OptionsStrategy:       session.OptionsStrategy,
+		EntryDate:             session.EntryDate,
+		PrimaryExpirationDate: session.PrimaryExpirationDate,
+		DTE:                   session.DTE,
+		LegsJSON:              session.LegsJSON,
+		NetDebit:              session.NetDebit,
+		MaxProfit:             session.MaxProfit,
+		MaxLoss:               session.MaxLoss,
+		BreakevenLower:        session.BreakevenLower,
+		BreakevenUpper:        session.BreakevenUpper,
+		UnderlyingAtEntry:     session.UnderlyingAtEntry,
+		MaxUnits:              session.MaxUnits,
+		CurrentUnits:          session.CurrentUnits,
+		AddStepN:              session.AddStepN,
+		OpenedAt:              time.Now(),
+	}
+
+	return position, nil
 }

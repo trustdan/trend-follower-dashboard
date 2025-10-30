@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/yourusername/trading-engine/internal/storage"
@@ -83,7 +84,12 @@ func main() {
 	log.Println("Showing window...")
 	mainWindow.Show()
 
-	// VIM mode is now set up in buildMainUI with the toggle button
+	// Attach VIM mode keyboard handlers AFTER window is shown
+	// (Canvas must be initialized first for handlers to register properly)
+	if appState.vimMode != nil {
+		log.Println("Attaching VIM mode handlers to window canvas...")
+		appState.vimMode.AttachToWindow()
+	}
 
 	// Always show welcome dialog on first run
 	// (User can disable with "don't show again" checkbox)
@@ -104,10 +110,26 @@ func main() {
 
 // AppState holds the application state
 type AppState struct {
-	db         *storage.DB
-	window     fyne.Window
-	isDarkMode bool
-	myApp      fyne.App
+	db                     *storage.DB
+	window                 fyne.Window
+	isDarkMode             bool
+	myApp                  fyne.App
+	currentSession         *storage.TradeSession
+	sessionChangeCallbacks []func(*storage.TradeSession)
+	vimMode                *VIMMode // VIM mode handler (attached after window shown)
+}
+
+// SetCurrentSession updates the current session and triggers all callbacks
+func (s *AppState) SetCurrentSession(session *storage.TradeSession) {
+	s.currentSession = session
+	for _, callback := range s.sessionChangeCallbacks {
+		callback(session)
+	}
+}
+
+// RegisterSessionChangeCallback adds a callback to be called when session changes
+func (s *AppState) RegisterSessionChangeCallback(callback func(*storage.TradeSession)) {
+	s.sessionChangeCallbacks = append(s.sessionChangeCallbacks, callback)
 }
 
 // buildMainUI constructs the main application UI with navigation
@@ -156,6 +178,7 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 		{"🔥 Heat Check", buildHeatCheckScreen},
 		{"💰 Trade Entry", buildTradeEntryScreen},
 		{"📅 Calendar", buildCalendarScreen},
+		{"📜 Session History", buildSessionHistoryScreen},
 	}
 
 	navButtons := make([]*widget.Button, len(navItems))
@@ -202,6 +225,7 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 
 	// Initialize VIM mode and wire up the toggle button
 	vimMode := NewVIMMode(state)
+	state.vimMode = vimMode // Store in AppState for later attachment
 	updateVIMButton := func() {
 		if vimMode.IsEnabled() {
 			vimBtn.SetText("VIM: On")
@@ -214,14 +238,44 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 		updateVIMButton()
 	}
 	updateVIMButton()
-	vimMode.AttachToWindow()
+	// NOTE: AttachToWindow() will be called in main() AFTER window.Show()
+
+	// Setup keyboard shortcuts
+	setupKeyboardShortcuts(state, state.window, func() {
+		showNewTradeDialog(state, updateNavSelection)
+	}, func() {
+		showResumeSessionMenu(state, updateNavSelection)
+	}, func() {
+		updateNavSelection(7) // Session History is tab index 7
+	})
+
+	// Create session bar
+	sessionBar := NewSessionBar(state)
+
+	// Create session control buttons
+	newTradeBtn := widget.NewButton("Start New Trade", func() {
+		showNewTradeDialog(state, updateNavSelection)
+	})
+	newTradeBtn.Importance = widget.HighImportance
+
+	resumeSessionBtn := createResumeSessionButton(state, updateNavSelection)
+
+	// Session controls row
+	sessionControls := container.NewHBox(
+		newTradeBtn,
+		resumeSessionBtn,
+		layout.NewSpacer(),
+		themeToggleBtn,
+		helpBtn,
+		vimBtn,
+		welcomeBtn,
+	)
 
 	// Create split container with navigation on left, content on right
 	split := container.NewHSplit(
 		container.NewBorder(
 			container.NewVBox(
 				widget.NewLabel("TF-Engine"),
-				container.NewHBox(themeToggleBtn, helpBtn, vimBtn, welcomeBtn),
 			),
 			nil, nil, nil,
 			container.NewVScroll(navContainer),
@@ -230,7 +284,19 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 	)
 	split.SetOffset(0.2) // 20% for navigation, 80% for content
 
-	return split
+	// Main layout with session bar at top
+	mainLayout := container.NewBorder(
+		container.NewVBox(
+			sessionBar,
+			widget.NewSeparator(),
+			sessionControls,
+			widget.NewSeparator(),
+		),
+		nil, nil, nil,
+		split,
+	)
+
+	return mainLayout
 }
 
 // isFirstRun checks if this is the first time the app is being run

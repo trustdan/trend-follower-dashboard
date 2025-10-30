@@ -3,10 +3,11 @@
 **TF = Trend Following** - Systematic Donchian breakout system following Ed Seykota/Turtle Trader principles
 
 **Created:** October 29, 2025
-**Status:** 🚀 Backend Ready | Native GUI Complete!
+**Version:** 2.0.0 (Trade Sessions Release)
+**Status:** 🚀 Backend Ready | Native GUI Complete | Trade Sessions Integrated!
 **Backend:** ✅ 100% Functional (tf-engine in Go)
-**Frontend:** ✅ Native Fyne GUI with all 7 screens
-**Binary:** `ui/tf-gui.exe` (49MB standalone)
+**Frontend:** ✅ Native Fyne GUI with all 8 screens + Sessions
+**Binary:** `ui/tf-gui.exe` (50MB standalone)
 
 ---
 
@@ -21,7 +22,15 @@ cd ui
 The application will:
 1. Initialize the database if needed (`trading.db`)
 2. Open with the Dashboard screen
-3. Show navigation menu with all 7 screens
+3. Show navigation menu with all 8 screens
+
+**🆕 Trade Sessions Workflow (v2.0):**
+1. Click "Start New Trade" → Select strategy and ticker
+2. Complete Checklist → Banner turns GREEN
+3. Calculate Position Sizing → Shares and risk determined
+4. Check Heat → Verify within caps
+5. Trade Entry → Final gate check and GO/NO-GO decision
+6. Session History → Review all past evaluations
 
 **First time setup:**
 1. Visit Dashboard to see current settings

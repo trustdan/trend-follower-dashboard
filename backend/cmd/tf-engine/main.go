@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/yourusername/trading-engine/internal/cli"
 )
 
 func main() {
@@ -26,9 +28,9 @@ func main() {
 
 	switch command {
 	case "server":
-		ServerCommand()
+		cli.ServerCommand()
 	case "init":
-		InitCommand()
+		cli.InitCommand()
 	case "settings":
 		fmt.Println("TODO: Implement settings command")
 		os.Exit(1)
