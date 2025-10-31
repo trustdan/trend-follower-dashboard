@@ -17,7 +17,8 @@ func createResumeSessionButton(state *AppState, navigateToTab func(int)) *widget
 	btn := widget.NewButton("Resume Session ▼", func() {
 		showResumeSessionMenu(state, navigateToTab)
 	})
-	btn.Importance = widget.MediumImportance
+	// Use HighImportance to ensure white text on dark green background
+	btn.Importance = widget.HighImportance
 	return btn
 }
 

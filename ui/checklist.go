@@ -14,8 +14,11 @@ import (
 )
 
 func buildChecklistScreen(state *AppState) fyne.CanvasObject {
-	// Session check: require active session
-	if state.currentSession == nil {
+	// Get active session (real or sample)
+	activeSession := state.GetActiveSession()
+
+	// Session check: require active session (real or sample)
+	if activeSession == nil && !state.sampleMode {
 		return showNoSessionPrompt(state, "Checklist")
 	}
 
@@ -27,11 +30,13 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	// Session info with read-only indicator
 	sessionInfoText := fmt.Sprintf(
 		"Session #%d • %s • %s",
-		state.currentSession.SessionNum,
-		formatStrategyDisplay(state.currentSession.Strategy),
-		state.currentSession.Ticker,
+		activeSession.SessionNum,
+		formatStrategyDisplay(activeSession.Strategy),
+		activeSession.Ticker,
 	)
-	if state.currentSession.Status == "COMPLETED" {
+	if state.sampleMode {
+		sessionInfoText = "📦 SAMPLE MODE: " + sessionInfoText
+	} else if activeSession.Status == "COMPLETED" {
 		sessionInfoText = "🔒 READ-ONLY: " + sessionInfoText
 	}
 	sessionInfo := widget.NewLabel(sessionInfoText)
@@ -40,11 +45,11 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	// Ticker entry (auto-filled from session)
 	tickerLabel := widget.NewLabel("Ticker Symbol:")
 	tickerEntry := widget.NewEntry()
-	tickerEntry.SetText(state.currentSession.Ticker)
+	tickerEntry.SetText(activeSession.Ticker)
 	tickerEntry.SetPlaceHolder("AAPL")
 
-	// Disable ticker entry if session is completed
-	if state.currentSession.Status == "COMPLETED" {
+	// Disable ticker entry if session is completed or in sample mode
+	if activeSession.Status == "COMPLETED" || state.sampleMode {
 		tickerEntry.Disable()
 	}
 
@@ -68,9 +73,17 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	fromPresetCheck := widget.NewCheck("From Preset (SIG_REQ)", nil)
 	fromPresetCheck.SetChecked(false)
 	fromPresetHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		ShowStyledInformation("From Preset",
-			"Ticker came from today's FINVIZ preset scan (55-bar breakout filter).\n\n"+
-				"This ensures we're trading mechanical breakouts, not random stocks.",
+		ShowStyledInformation("From Preset - Signal Required",
+			"What it means:\n"+
+				"The stock came from today's FINVIZ screener results, not from a random idea or tip.\n\n"+
+				"Why it matters:\n"+
+				"This prevents you from trading random stocks based on emotions or hunches. "+
+				"You're only considering stocks that meet specific technical criteria.\n\n"+
+				"Example:\n"+
+				"✓ GOOD: AAPL showed up in your FINVIZ scan for \"new 55-day highs\"\n"+
+				"✗ BAD: Your friend texted you about AAPL looking good\n\n"+
+				"Think of it like:\n"+
+				"Only dating people who meet your criteria, not random people you bump into.",
 			state.window)
 	})
 	fromPresetHelp.Importance = widget.HighImportance
@@ -78,9 +91,19 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	trendCheck := widget.NewCheck("Trend Confirmed (RISK_REQ)", nil)
 	trendCheck.SetChecked(false)
 	trendHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		ShowStyledInformation("Trend Confirmed",
-			"Trend confirmed: Long > 55-high OR Short < 55-low. Uses 2×N stop distance.\n\n"+
-				"This is the Donchian breakout filter - the core signal.",
+		ShowStyledInformation("Trend Confirmed - Risk/Sizing Required",
+			"What it means:\n"+
+				"For longs: Stock price just broke above its highest point in 55 days\n"+
+				"For shorts: Stock price just broke below its lowest point in 55 days\n\n"+
+				"Why it matters:\n"+
+				"You're catching a strong momentum move. The trend is clearly established.\n"+
+				"You're not trying to predict a reversal or catch a falling knife.\n\n"+
+				"Example:\n"+
+				"AAPL was trading between $150-$180 for 2 months, then broke above $180\n"+
+				"✓ GOOD: Enter long when it breaks $180 (new 55-day high)\n"+
+				"✗ BAD: Try to guess if $175 is \"good enough\" to enter\n\n"+
+				"Think of it like:\n"+
+				"Joining a race car that's already speeding up, not trying to time when it will start.",
 			state.window)
 	})
 	trendHelp.Importance = widget.HighImportance
@@ -88,9 +111,22 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	liquidityCheck := widget.NewCheck("Liquidity OK (OPT_REQ)", nil)
 	liquidityCheck.SetChecked(false)
 	liquidityHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		ShowStyledInformation("Liquidity OK",
-			"Options liquidity: bid-ask < 10% of mid, OI > 100, 60-90 DTE.\n\n"+
-				"For options strategies only. Ensures you can enter and exit without slippage.",
+		ShowStyledInformation("Liquidity OK - Options Required",
+			"What it means:\n"+
+				"If trading options: There's enough trading volume to get in and out easily.\n"+
+				"If trading stocks: Average daily volume is high enough (usually 500K+ shares).\n\n"+
+				"Why it matters:\n"+
+				"Low liquidity = you might not be able to exit when you want to.\n"+
+				"The bid-ask spread could eat up your profits.\n\n"+
+				"Example (Options):\n"+
+				"Option shows: Bid $4.80, Ask $5.20, Open Interest 250 contracts\n"+
+				"✓ GOOD: Spread is $0.40 (8% of $5.00) and 250 contracts available\n"+
+				"✗ BAD: Spread is $0.80 (16%) or only 20 contracts available\n\n"+
+				"Example (Stocks):\n"+
+				"✓ GOOD: AAPL trades 50M shares per day - easy to buy/sell\n"+
+				"✗ BAD: Tiny company trades 10K shares per day - might get stuck\n\n"+
+				"Think of it like:\n"+
+				"Trading at a busy market vs. trying to sell something on a deserted street.",
 			state.window)
 	})
 	liquidityHelp.Importance = widget.HighImportance
@@ -98,9 +134,22 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	timeframeCheck := widget.NewCheck("TV Confirm (EXIT_REQ)", nil)
 	timeframeCheck.SetChecked(false)
 	timeframeHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		ShowStyledInformation("TV Confirm",
-			"Exit plan confirmed: 10-bar opposite Donchian OR 2×N, whichever closer.\n\n"+
-				"Know your exit BEFORE you enter. This is non-negotiable.",
+		ShowStyledInformation("TV Confirm - Exit Plan Required",
+			"What it means:\n"+
+				"You've confirmed your exit plan BEFORE entering the trade.\n"+
+				"You know exactly when you'll get out, whether you win or lose.\n\n"+
+				"Why it matters:\n"+
+				"No exit plan = holding losers too long and selling winners too early.\n"+
+				"Emotional decisions happen when you don't know your exit in advance.\n\n"+
+				"The Rule:\n"+
+				"Exit when price breaks the 10-day low (for longs) OR hits your stop loss,\n"+
+				"whichever happens first.\n\n"+
+				"Example:\n"+
+				"You bought AAPL at $180 with a stop at $177\n"+
+				"✓ Exit if: Price hits $177 (stop loss) OR breaks below 10-day low\n"+
+				"✗ Don't: \"Let me see what happens\" or \"I'll decide later\"\n\n"+
+				"Think of it like:\n"+
+				"Setting your GPS destination before driving, not figuring it out as you go.",
 			state.window)
 	})
 	timeframeHelp.Importance = widget.HighImportance
@@ -108,9 +157,24 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	earningsCheck := widget.NewCheck("Earnings OK (BEHAV_REQ)", nil)
 	earningsCheck.SetChecked(false)
 	earningsHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		ShowStyledInformation("Earnings OK",
-			"2-minute cooloff passed, no intraday overrides, earnings blackout OK.\n\n"+
-				"The 2-minute timer prevents impulsive entries. It's intentional friction.",
+		ShowStyledInformation("Earnings OK - Behavior Required",
+			"What it means:\n"+
+				"1. You've waited at least 2 minutes since evaluating this trade\n"+
+				"2. The stock doesn't have earnings coming up in the next 5 days\n"+
+				"3. You're not changing your mind multiple times today\n\n"+
+				"Why it matters:\n"+
+				"The 2-minute wait prevents impulsive \"I gotta get in NOW!\" feelings.\n"+
+				"Earnings announcements cause wild price swings that break trend systems.\n\n"+
+				"Example:\n"+
+				"✓ GOOD: Evaluated at 10:00am, waited until 10:02am to enter\n"+
+				"✓ GOOD: Checked - no earnings until next month\n"+
+				"✗ BAD: Immediately hitting buy after seeing the breakout\n"+
+				"✗ BAD: Company reports earnings tomorrow morning\n\n"+
+				"The 2-Minute Rule:\n"+
+				"If you can't wait 2 minutes, you're probably being impulsive.\n"+
+				"Good trades will still be good trades in 2 minutes.\n\n"+
+				"Think of it like:\n"+
+				"Waiting 2 minutes before sending an angry email - often saves you from mistakes.",
 			state.window)
 	})
 	earningsHelp.Importance = widget.HighImportance
@@ -130,9 +194,22 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	regimeCheck := widget.NewCheck("Regime OK (e.g., SPY > 200SMA)", nil)
 	regimeCheck.SetChecked(false)
 	regimeHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		ShowStyledInformation("Regime OK",
-			"Market regime favorable (e.g., SPY > 200SMA for longs).\n\n"+
-				"Optional but improves quality score. Trading with the market tide.",
+		ShowStyledInformation("Regime OK (Optional)",
+			"What it means:\n"+
+				"The overall market is moving in your direction.\n"+
+				"For longs: The S&P 500 (SPY) is above its 200-day average\n"+
+				"For shorts: The S&P 500 is below its 200-day average\n\n"+
+				"Why it matters:\n"+
+				"\"A rising tide lifts all boats\" - it's easier to make money when the\n"+
+				"whole market is moving with you, not against you.\n\n"+
+				"Example:\n"+
+				"SPY at $450, 200-day average at $420\n"+
+				"✓ GOOD for longs: Market is in uptrend (+7% above average)\n"+
+				"✗ RISKY for longs: Market at $390 (below average) - fighting the tide\n\n"+
+				"Not Required But:\n"+
+				"If this is checked, your quality score goes up. Think of it as bonus points.\n\n"+
+				"Think of it like:\n"+
+				"Swimming downstream vs. upstream - both work, but one is easier.",
 			state.window)
 	})
 	regimeHelp.Importance = widget.HighImportance
@@ -140,9 +217,24 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	chaseCheck := widget.NewCheck("No Chase (< 2N above 20-EMA)", nil)
 	chaseCheck.SetChecked(false)
 	chaseHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		ShowStyledInformation("No Chase",
-			"Entry not > 2N above 20-EMA (avoids chasing extended moves).\n\n"+
-				"Optional but reduces risk of buying tops. Patience pays.",
+		ShowStyledInformation("No Chase (Optional)",
+			"What it means:\n"+
+				"The stock hasn't run up too far, too fast from its recent average price.\n"+
+				"Specifically: Entry price isn't more than 2× ATR above the 20-day average.\n\n"+
+				"Why it matters:\n"+
+				"Chasing stocks that have already run too far often means buying at the top.\n"+
+				"You want to catch the move early, not late.\n\n"+
+				"Example:\n"+
+				"Stock's 20-day average: $100\n"+
+				"ATR (daily volatility): $3\n"+
+				"Current price: $104\n"+
+				"✓ GOOD: Only $4 above average (< 2×$3 = $6 limit)\n"+
+				"✗ RISKY: Price at $108 (too extended - likely near a pullback)\n\n"+
+				"Not Required But:\n"+
+				"Checking this improves quality score. It's okay to trade extended stocks,\n"+
+				"but you're taking on more risk of a near-term pullback.\n\n"+
+				"Think of it like:\n"+
+				"Joining a party that just started vs. showing up at 2am when it's winding down.",
 			state.window)
 	})
 	chaseHelp.Importance = widget.HighImportance
@@ -150,9 +242,25 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	journalCheck := widget.NewCheck("Journal Entry Written", nil)
 	journalCheck.SetChecked(false)
 	journalHelp := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
-		ShowStyledInformation("Journal OK",
-			"Trade plan documented: why now, profit targets, risk/reward.\n\n"+
-				"Optional but highly recommended. Writing forces clarity.",
+		ShowStyledInformation("Journal Entry Written (Optional)",
+			"What it means:\n"+
+				"You wrote down your trade plan BEFORE entering:\n"+
+				"• Why are you taking this trade right now?\n"+
+				"• What's your profit target?\n"+
+				"• What's your stop loss?\n"+
+				"• What could go wrong?\n\n"+
+				"Why it matters:\n"+
+				"Writing forces you to think clearly. If you can't explain the trade\n"+
+				"in writing, you probably don't understand it well enough to risk money.\n\n"+
+				"What to Write:\n"+
+				"\"AAPL broke above 55-day high at $180. Entry at $181, stop at $177.\n"+
+				"Target: hold for trend exit at 10-day low. Risk $300 for $900+ potential.\n"+
+				"Could fail if market sells off or sector rotation happens.\"\n\n"+
+				"Not Required But:\n"+
+				"Highly recommended. Your future self will thank you when reviewing trades.\n"+
+				"Improves quality score.\n\n"+
+				"Think of it like:\n"+
+				"Planning a road trip vs. just getting in the car and driving randomly.",
 			state.window)
 	})
 	journalHelp.Importance = widget.HighImportance
@@ -170,16 +278,39 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 
 	// Next button (shown after GREEN banner)
 	nextBtn := widget.NewButton("Next: Position Sizing →", func() {
-		ShowStyledInformation("Next Step",
-			"Please use the tab bar to navigate to the Position Sizing tab.\n\n"+
-				"Your checklist results have been saved to Session #"+fmt.Sprintf("%d", state.currentSession.SessionNum),
-			state.window)
+		// Navigate to Position Sizing tab (index 3)
+		if state.navigateToTab != nil {
+			state.navigateToTab(3)
+		}
 	})
 	nextBtn.Importance = widget.HighImportance
 	nextBtn.Hide() // Hidden initially
 
 	// Evaluate button
 	evaluateBtn := widget.NewButton("Evaluate Checklist", func() {
+		// In sample mode, just show sample results without database updates
+		if state.sampleMode {
+			// Pre-check all boxes for sample mode
+			fromPresetCheck.SetChecked(true)
+			trendCheck.SetChecked(true)
+			liquidityCheck.SetChecked(true)
+			timeframeCheck.SetChecked(true)
+			earningsCheck.SetChecked(true)
+			regimeCheck.SetChecked(true)
+			chaseCheck.SetChecked(true)
+			journalCheck.SetChecked(true)
+
+			// Show GREEN banner
+			bannerRect.FillColor = ColorGreen()
+			bannerText.Text = "✓ GREEN - OK TO TRADE"
+			bannerRect.Refresh()
+			bannerText.Refresh()
+
+			resultsLabel.SetText("📦 SAMPLE MODE\n\nBanner: GREEN\nMissing Required: 0\n\n✓ All gates passed! (Sample data)\n✓ Sample session ready for Position Sizing")
+			nextBtn.Show()
+			return
+		}
+
 		ticker := tickerEntry.Text
 		if ticker == "" {
 			resultsLabel.SetText("❌ Please enter a ticker symbol")
@@ -232,7 +363,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 
 		// Update session in database
 		err = state.db.UpdateSessionChecklist(
-			state.currentSession.ID,
+			activeSession.ID,
 			result.Banner,
 			result.MissingCount,
 			qualityScore,
@@ -243,7 +374,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 		}
 
 		// Reload session to get updated state
-		updatedSession, err := state.db.GetSession(state.currentSession.ID)
+		updatedSession, err := state.db.GetSession(activeSession.ID)
 		if err != nil {
 			resultsLabel.SetText(fmt.Sprintf("❌ Failed to reload session: %v", err))
 			return
@@ -263,7 +394,7 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 
 		if result.Banner == "GREEN" {
 			resultsText += "\n✓ All gates passed! 2-minute cooloff timer started."
-			resultsText += fmt.Sprintf("\n✓ Session #%d updated - ready for Position Sizing", state.currentSession.SessionNum)
+			resultsText += fmt.Sprintf("\n✓ Session #%d updated - ready for Position Sizing", activeSession.SessionNum)
 			nextBtn.Show()
 		} else {
 			nextBtn.Hide()
@@ -273,8 +404,8 @@ func buildChecklistScreen(state *AppState) fyne.CanvasObject {
 	})
 	evaluateBtn.Importance = widget.HighImportance
 
-	// Disable evaluate button if session is completed
-	if state.currentSession.Status == "COMPLETED" {
+	// Disable evaluate button if session is completed (but allow in sample mode)
+	if activeSession.Status == "COMPLETED" && !state.sampleMode {
 		evaluateBtn.Disable()
 	}
 

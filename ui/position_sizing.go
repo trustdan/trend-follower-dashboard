@@ -13,18 +13,23 @@ import (
 )
 
 func buildPositionSizingScreen(state *AppState) fyne.CanvasObject {
+	// Get active session (real or sample)
+	activeSession := state.GetActiveSession()
+
 	// Session check: require active session
-	if state.currentSession == nil {
+	if activeSession == nil && !state.sampleMode {
 		return showNoSessionPrompt(state, "Position Sizing")
 	}
 
-	// Prerequisite check: checklist must be completed with GREEN banner
-	if !state.currentSession.ChecklistCompleted {
-		return showPrerequisiteError(state, "Checklist", "Position Sizing")
-	}
+	// Prerequisite check: checklist must be completed with GREEN banner (skip in sample mode)
+	if !state.sampleMode {
+		if !activeSession.ChecklistCompleted {
+			return showPrerequisiteError(state, "Checklist", "Position Sizing")
+		}
 
-	if state.currentSession.ChecklistBanner == "RED" || state.currentSession.ChecklistBanner == "YELLOW" {
-		return showPrerequisiteError(state, "Checklist", "Position Sizing")
+		if activeSession.ChecklistBanner == "RED" || activeSession.ChecklistBanner == "YELLOW" {
+			return showPrerequisiteError(state, "Checklist", "Position Sizing")
+		}
 	}
 
 	// Title
@@ -32,14 +37,18 @@ func buildPositionSizingScreen(state *AppState) fyne.CanvasObject {
 	title.TextSize = 24
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	// Session info
-	sessionInfo := widget.NewLabel(fmt.Sprintf(
+	// Session info with sample mode indicator
+	sessionInfoText := fmt.Sprintf(
 		"Session #%d • %s • %s • Banner: %s",
-		state.currentSession.SessionNum,
-		formatStrategyDisplay(state.currentSession.Strategy),
-		state.currentSession.Ticker,
-		state.currentSession.ChecklistBanner,
-	))
+		activeSession.SessionNum,
+		formatStrategyDisplay(activeSession.Strategy),
+		activeSession.Ticker,
+		activeSession.ChecklistBanner,
+	)
+	if state.sampleMode {
+		sessionInfoText = "📦 SAMPLE MODE: " + sessionInfoText
+	}
+	sessionInfo := widget.NewLabel(sessionInfoText)
 	sessionInfo.TextStyle = fyne.TextStyle{Bold: true}
 
 	// Method selector
@@ -53,17 +62,23 @@ func buildPositionSizingScreen(state *AppState) fyne.CanvasObject {
 	// Common inputs
 	tickerLabel := widget.NewLabel("Ticker:")
 	tickerEntry := widget.NewEntry()
-	tickerEntry.SetText(state.currentSession.Ticker) // Auto-fill from session
+	tickerEntry.SetText(activeSession.Ticker) // Auto-fill from session
 	tickerEntry.SetPlaceHolder("AAPL")
 	tickerEntry.Disable() // Lock ticker to session ticker
 
 	entryLabel := widget.NewLabel("Entry Price:")
 	entryEntry := widget.NewEntry()
 	entryEntry.SetPlaceHolder("180.00")
+	if state.sampleMode {
+		entryEntry.SetText("181.50") // Sample data
+	}
 
 	atrLabel := widget.NewLabel("ATR (N):")
 	atrEntry := widget.NewEntry()
 	atrEntry.SetPlaceHolder("1.50")
+	if state.sampleMode {
+		atrEntry.SetText("2.45") // Sample data
+	}
 
 	kLabel := widget.NewLabel("K Multiple (Stop Distance):")
 	kEntry := widget.NewEntry()
@@ -148,19 +163,19 @@ func buildPositionSizingScreen(state *AppState) fyne.CanvasObject {
 	optionsInfoLabel.Wrapping = fyne.TextWrapWord
 	optionsInfoLabel.Hide()
 
-	if state.currentSession.InstrumentType == "option" && state.currentSession.OptionsStrategy != "" {
+	if activeSession.InstrumentType == "option" && activeSession.OptionsStrategy != "" {
 		// Show options information
 		optionsInfo := fmt.Sprintf("📊 Options Strategy: %s\n"+
 			"Expiration: %s (%d DTE)\n"+
 			"Entry Date: %s\n"+
 			"Roll at: %d DTE\n"+
 			"Time Exit Mode: %s",
-			state.currentSession.OptionsStrategy,
-			state.currentSession.PrimaryExpirationDate,
-			state.currentSession.DTE,
-			state.currentSession.EntryDate,
-			state.currentSession.RollThresholdDTE,
-			state.currentSession.TimeExitMode)
+			activeSession.OptionsStrategy,
+			activeSession.PrimaryExpirationDate,
+			activeSession.DTE,
+			activeSession.EntryDate,
+			activeSession.RollThresholdDTE,
+			activeSession.TimeExitMode)
 
 		optionsInfoLabel.SetText(optionsInfo)
 		optionsInfoLabel.Show()
@@ -168,10 +183,13 @@ func buildPositionSizingScreen(state *AppState) fyne.CanvasObject {
 
 	// Next button (shown after successful calculation)
 	nextBtn := widget.NewButton("Next: Heat Check →", func() {
-		ShowStyledInformation("Next Step",
-			"Please use the tab bar to navigate to the Heat Check tab.\n\n"+
-				"Your position sizing has been saved to Session #"+fmt.Sprintf("%d", state.currentSession.SessionNum),
-			state.window)
+		message := "Please use the tab bar to navigate to the Heat Check tab.\n\n"
+		if state.sampleMode {
+			message += "📦 Sample mode - explore Heat Check with sample data"
+		} else {
+			message += "Your position sizing has been saved to Session #" + fmt.Sprintf("%d", activeSession.SessionNum)
+		}
+		ShowStyledInformation("Next Step", message, state.window)
 	})
 	nextBtn.Importance = widget.HighImportance
 	nextBtn.Hide() // Hidden initially
@@ -296,42 +314,44 @@ func buildPositionSizingScreen(state *AppState) fyne.CanvasObject {
 		addOnText += fmt.Sprintf("\nCurrent Units: %d / %d", currentUnits, maxUnits)
 		addOnPricesLabel.SetText(addOnText)
 
-		// Update session in database with pyramid data
-		methodStr := result.Method
-		deltaValue := 0.0
-		if method == "Options (Delta-ATR)" && sizingReq.Delta > 0 {
-			deltaValue = sizingReq.Delta
-		}
-		err = state.db.UpdateSessionSizingWithPyramid(
-			state.currentSession.ID,
-			methodStr,
-			entry,
-			atr,
-			k,
-			result.StopDistance,
-			result.InitialStop,
-			result.Shares,
-			result.Contracts,
-			result.RiskDollars,
-			deltaValue,
-			maxUnits,
-			addStep,
-			addPrice1,
-			addPrice2,
-			addPrice3,
-		)
-		if err != nil {
-			resultsLabel.SetText(fmt.Sprintf("❌ Failed to save session: %v", err))
-			return
-		}
+		// Update session in database with pyramid data (skip in sample mode)
+		if !state.sampleMode {
+			methodStr := result.Method
+			deltaValue := 0.0
+			if method == "Options (Delta-ATR)" && sizingReq.Delta > 0 {
+				deltaValue = sizingReq.Delta
+			}
+			err = state.db.UpdateSessionSizingWithPyramid(
+				activeSession.ID,
+				methodStr,
+				entry,
+				atr,
+				k,
+				result.StopDistance,
+				result.InitialStop,
+				result.Shares,
+				result.Contracts,
+				result.RiskDollars,
+				deltaValue,
+				maxUnits,
+				addStep,
+				addPrice1,
+				addPrice2,
+				addPrice3,
+			)
+			if err != nil {
+				resultsLabel.SetText(fmt.Sprintf("❌ Failed to save session: %v", err))
+				return
+			}
 
-		// Reload session to get updated state
-		updatedSession, err := state.db.GetSession(state.currentSession.ID)
-		if err != nil {
-			resultsLabel.SetText(fmt.Sprintf("❌ Failed to reload session: %v", err))
-			return
+			// Reload session to get updated state
+			updatedSession, err := state.db.GetSession(activeSession.ID)
+			if err != nil {
+				resultsLabel.SetText(fmt.Sprintf("❌ Failed to reload session: %v", err))
+				return
+			}
+			state.SetCurrentSession(updatedSession)
 		}
-		state.SetCurrentSession(updatedSession)
 
 		// Format results
 		resultsText := fmt.Sprintf(`✓ Position Size Calculated
@@ -356,15 +376,19 @@ Initial Stop: $%.2f
 		resultsText += fmt.Sprintf("Actual Risk: $%.2f (%.2f%% of equity)\n",
 			result.ActualRisk, result.ActualRisk/equity*100)
 
-		resultsText += fmt.Sprintf("\n✓ Session #%d updated - ready for Heat Check", state.currentSession.SessionNum)
+		if state.sampleMode {
+			resultsText += "\n📦 SAMPLE MODE - Calculations shown but not saved"
+		} else {
+			resultsText += fmt.Sprintf("\n✓ Session #%d updated - ready for Heat Check", activeSession.SessionNum)
+		}
 
 		resultsLabel.SetText(resultsText)
 		nextBtn.Show()
 	})
 	calculateBtn.Importance = widget.HighImportance
 
-	// Disable calculate button if session is completed
-	if state.currentSession.Status == "COMPLETED" {
+	// Disable calculate button if session is completed (but allow in sample mode)
+	if activeSession.Status == "COMPLETED" && !state.sampleMode {
 		calculateBtn.Disable()
 	}
 

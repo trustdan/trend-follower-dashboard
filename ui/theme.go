@@ -63,9 +63,9 @@ func (t *tfTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) col
 		// The button text color will be handled by ForegroundOnPrimary
 		return BritishRacingGreen
 
-	// Button text should be white (good contrast on dark green)
-	case "buttonText":
-		return color.White
+	// Force button text to be white for all button types
+	case theme.ColorNameDisabled:
+		return color.RGBA{R: 0x60, G: 0x60, B: 0x60, A: 0xFF}
 
 	case theme.ColorNameHover:
 		return ForestGreen
@@ -98,20 +98,23 @@ func (t *tfTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) col
 		}
 		return DarkText  // White text for dark backgrounds
 
-	// Ensure good contrast on buttons (white text on green buttons)
-	// This applies to text on primary-colored buttons
+	// CRITICAL: Ensure ALL button text is white for good contrast on green backgrounds
+	// These apply to text on colored buttons
 	case theme.ColorNameForegroundOnPrimary:
 		// Always white for good contrast on British Racing Green
 		return color.White
 
 	case theme.ColorNameForegroundOnError:
+		// White text on red danger buttons
 		return color.White
 
 	case theme.ColorNameForegroundOnSuccess:
+		// White text on green success buttons
 		return color.White
 
 	case theme.ColorNameForegroundOnWarning:
-		return color.Black
+		// White text on yellow/orange warning buttons (changed from black)
+		return color.White
 
 	case theme.ColorNameInputBackground:
 		if isLight {

@@ -11,6 +11,8 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/yourusername/trading-engine/internal/storage"
 )
 
 func buildDashboardScreen(state *AppState) fyne.CanvasObject {
@@ -22,35 +24,38 @@ func buildDashboardScreen(state *AppState) fyne.CanvasObject {
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	log.Println("buildDashboardScreen: Title created")
 
-	// Account Settings Card
-	log.Println("buildDashboardScreen: Building settings card...")
-	settingsCard := buildSettingsCard(state)
-	log.Println("buildDashboardScreen: Settings card built")
+	// Create containers that can be refreshed
+	settingsContainer := container.NewStack()
+	positionsContainer := container.NewStack()
+	heatContainer := container.NewStack()
+	candidatesContainer := container.NewStack()
 
-	// Open Positions Card
-	log.Println("buildDashboardScreen: Building positions card...")
-	positionsCard := buildPositionsCard(state)
-	log.Println("buildDashboardScreen: Positions card built")
+	// Function to rebuild all cards (declare var first for closure)
+	var refreshDashboard func()
+	refreshDashboard = func() {
+		log.Println("buildDashboardScreen: Refreshing all cards...")
+		settingsContainer.Objects = []fyne.CanvasObject{buildSettingsCard(state)}
+		positionsContainer.Objects = []fyne.CanvasObject{buildPositionsCard(state)}
+		heatContainer.Objects = []fyne.CanvasObject{buildHeatCard(state)}
+		candidatesContainer.Objects = []fyne.CanvasObject{buildCandidatesCard(state, refreshDashboard)}
+		settingsContainer.Refresh()
+		positionsContainer.Refresh()
+		heatContainer.Refresh()
+		candidatesContainer.Refresh()
+	}
 
-	// Heat Status Card
-	log.Println("buildDashboardScreen: Building heat card...")
-	heatCard := buildHeatCard(state)
-	log.Println("buildDashboardScreen: Heat card built")
-
-	// Today's Candidates Card
-	log.Println("buildDashboardScreen: Building candidates card...")
-	candidatesCard := buildCandidatesCard(state)
-	log.Println("buildDashboardScreen: Candidates card built")
+	// Build initial cards
+	refreshDashboard()
 
 	// Layout: 2x2 grid of cards
 	topRow := container.NewGridWithColumns(2,
-		settingsCard,
-		heatCard,
+		settingsContainer,
+		heatContainer,
 	)
 
 	bottomRow := container.NewGridWithColumns(2,
-		positionsCard,
-		candidatesCard,
+		positionsContainer,
+		candidatesContainer,
 	)
 
 	content := container.NewVBox(
@@ -66,13 +71,20 @@ func buildDashboardScreen(state *AppState) fyne.CanvasObject {
 func buildSettingsCard(state *AppState) fyne.CanvasObject {
 	title := widget.NewLabelWithStyle("Account Settings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
-	// Load settings from database
-	settings, err := state.db.GetAllSettings()
-	if err != nil {
-		return container.NewVBox(
-			title,
-			widget.NewLabel("Error loading settings"),
-		)
+	// Use sample settings if in sample mode
+	var settings map[string]string
+	var err error
+	if state.sampleMode {
+		settings = CreateSampleSettings()
+	} else {
+		// Load settings from database
+		settings, err = state.db.GetAllSettings()
+		if err != nil {
+			return container.NewVBox(
+				title,
+				widget.NewLabel("Error loading settings"),
+			)
+		}
 	}
 
 	// Extract settings with defaults for nil values
@@ -107,13 +119,20 @@ func buildSettingsCard(state *AppState) fyne.CanvasObject {
 func buildPositionsCard(state *AppState) fyne.CanvasObject {
 	title := widget.NewLabelWithStyle("Open Positions", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
-	// Load open positions from database
-	positions, err := state.db.GetOpenPositions()
-	if err != nil {
-		return container.NewVBox(
-			title,
-			widget.NewLabel("Error loading positions"),
-		)
+	// Use sample positions if in sample mode
+	var positions []storage.Position
+	var err error
+	if state.sampleMode {
+		positions = CreateSamplePositions()
+	} else {
+		// Load open positions from database
+		positions, err = state.db.GetOpenPositions()
+		if err != nil {
+			return container.NewVBox(
+				title,
+				widget.NewLabel("Error loading positions"),
+			)
+		}
 	}
 
 	if len(positions) == 0 {
@@ -145,22 +164,32 @@ func buildPositionsCard(state *AppState) fyne.CanvasObject {
 func buildHeatCard(state *AppState) fyne.CanvasObject {
 	title := widget.NewLabelWithStyle("Heat Status", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
-	// Get settings for caps
-	settings, err := state.db.GetAllSettings()
-	if err != nil {
-		return container.NewVBox(
-			title,
-			widget.NewLabel("Error loading heat data"),
-		)
-	}
+	// Use sample data if in sample mode
+	var settings map[string]string
+	var positions []storage.Position
+	var err error
 
-	// Calculate total portfolio heat
-	positions, err := state.db.GetOpenPositions()
-	if err != nil {
-		return container.NewVBox(
-			title,
-			widget.NewLabel("Error loading positions"),
-		)
+	if state.sampleMode {
+		settings = CreateSampleSettings()
+		positions = CreateSamplePositions()
+	} else {
+		// Get settings for caps
+		settings, err = state.db.GetAllSettings()
+		if err != nil {
+			return container.NewVBox(
+				title,
+				widget.NewLabel("Error loading heat data"),
+			)
+		}
+
+		// Calculate total portfolio heat
+		positions, err = state.db.GetOpenPositions()
+		if err != nil {
+			return container.NewVBox(
+				title,
+				widget.NewLabel("Error loading positions"),
+			)
+		}
 	}
 
 	var totalHeat float64
@@ -192,29 +221,63 @@ func buildHeatCard(state *AppState) fyne.CanvasObject {
 	return container.NewPadded(card)
 }
 
-func buildCandidatesCard(state *AppState) fyne.CanvasObject {
+func buildCandidatesCard(state *AppState, refreshCallback func()) fyne.CanvasObject {
 	title := widget.NewLabelWithStyle("Today's Candidates", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
 	// Load today's candidates (use today's date)
 	today := time.Now().Format("2006-01-02")
-	candidates, err := state.db.GetCandidatesForDate(today)
-	if err != nil {
-		return container.NewVBox(
-			title,
-			widget.NewLabel("Error loading candidates"),
-		)
+
+	// Use sample candidates if in sample mode
+	var candidates []map[string]interface{}
+	var err error
+
+	if state.sampleMode {
+		// Convert sample candidates to map format
+		sampleCands := CreateSampleCandidates()
+		candidates = make([]map[string]interface{}, len(sampleCands))
+		for i, cand := range sampleCands {
+			candidates[i] = map[string]interface{}{
+				"ticker":    cand.Ticker,
+				"scan_date": cand.Date,
+			}
+		}
+	} else {
+		candidates, err = state.db.GetCandidatesForDate(today)
+		if err != nil {
+			return container.NewVBox(
+				title,
+				widget.NewLabel("Error loading candidates"),
+			)
+		}
 	}
 
-	if len(candidates) == 0 {
+	// Show count and date
+	dateLabel := widget.NewLabel(fmt.Sprintf("Date: %s", today))
+
+	if len(candidates) == 0 && !state.sampleMode {
+		refreshBtn := widget.NewButton("Refresh", func() {
+			log.Println("Refreshing candidates card...")
+			if refreshCallback != nil {
+				refreshCallback()
+			}
+		})
+		refreshBtn.Importance = widget.HighImportance
+
 		return container.NewPadded(
 			container.NewVBox(
 				title,
 				widget.NewSeparator(),
+				dateLabel,
 				widget.NewLabel("No candidates found"),
 				widget.NewLabel("Use Scanner to import from FINVIZ"),
+				widget.NewSeparator(),
+				refreshBtn,
 			),
 		)
 	}
+
+	// Show count
+	countLabel := widget.NewLabel(fmt.Sprintf("Found %d candidates:", len(candidates)))
 
 	// Create list of candidates
 	candidatesList := container.NewVBox()
@@ -233,19 +296,52 @@ func buildCandidatesCard(state *AppState) fyne.CanvasObject {
 	}
 
 	refreshBtn := widget.NewButton("Refresh", func() {
-		// TODO: Refresh candidates
+		log.Println("Refreshing candidates card...")
+		if refreshCallback != nil {
+			refreshCallback()
+		}
 	})
 	refreshBtn.Importance = widget.HighImportance
+
+	clearBtn := widget.NewButton("Clear Today's Candidates", func() {
+		// Confirm before clearing
+		dialog.ShowConfirm(
+			"Clear Candidates?",
+			fmt.Sprintf("This will delete all %d candidates for %s. Are you sure?", len(candidates), today),
+			func(confirmed bool) {
+				if confirmed {
+					// Delete all candidates for today
+					err := state.db.ClearCandidatesForDate(today)
+					if err != nil {
+						dialog.ShowError(fmt.Errorf("failed to clear candidates: %w", err), state.window)
+						return
+					}
+					log.Printf("Cleared candidates for %s", today)
+					// Refresh the dashboard
+					if refreshCallback != nil {
+						refreshCallback()
+					}
+				}
+			},
+			state.window,
+		)
+	})
+	clearBtn.Importance = widget.DangerImportance
 
 	// Create scroll container with minimum height for better visibility
 	scroll := container.NewScroll(candidatesList)
 	scroll.SetMinSize(fyne.NewSize(200, 300))  // Min width 200, height 300 pixels
 
+	buttonRow := container.NewHBox(refreshBtn, clearBtn)
+
 	card := container.NewVBox(
 		title,
 		widget.NewSeparator(),
+		dateLabel,
+		countLabel,
 		scroll,
-		refreshBtn,
+		widget.NewSeparator(),
+		buttonRow,
 	)
 
 	return container.NewPadded(card)

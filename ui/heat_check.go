@@ -10,16 +10,20 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/yourusername/trading-engine/internal/domain"
+	"github.com/yourusername/trading-engine/internal/storage"
 )
 
 func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
+	// Get active session (real or sample)
+	activeSession := state.GetActiveSession()
+
 	// Session check: require active session
-	if state.currentSession == nil {
+	if activeSession == nil && !state.sampleMode {
 		return showNoSessionPrompt(state, "Heat Check")
 	}
 
-	// Prerequisite check: sizing must be completed
-	if !state.currentSession.SizingCompleted {
+	// Prerequisite check: sizing must be completed (skip in sample mode)
+	if !state.sampleMode && !activeSession.SizingCompleted {
 		return showPrerequisiteError(state, "Position Sizing", "Heat Check")
 	}
 
@@ -28,14 +32,18 @@ func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
 	title.TextSize = 24
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	// Session info
-	sessionInfo := widget.NewLabel(fmt.Sprintf(
+	// Session info with sample mode indicator
+	sessionInfoText := fmt.Sprintf(
 		"Session #%d • %s • %s • Risk: $%.2f",
-		state.currentSession.SessionNum,
-		formatStrategyDisplay(state.currentSession.Strategy),
-		state.currentSession.Ticker,
-		state.currentSession.SizingRiskDollars,
-	))
+		activeSession.SessionNum,
+		formatStrategyDisplay(activeSession.Strategy),
+		activeSession.Ticker,
+		activeSession.SizingRiskDollars,
+	)
+	if state.sampleMode {
+		sessionInfoText = "📦 SAMPLE MODE: " + sessionInfoText
+	}
+	sessionInfo := widget.NewLabel(sessionInfoText)
 	sessionInfo.TextStyle = fyne.TextStyle{Bold: true}
 
 	// Explanation panel
@@ -54,8 +62,13 @@ func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
 	settingsInfo := widget.NewLabel(fmt.Sprintf("Account: $%s | Portfolio Cap: %s%% | Bucket Cap: %s%%",
 		equityStr, portfolioCapStr, bucketCapStr))
 
-	// Calculate current heat
-	positions, _ := state.db.GetOpenPositions()
+	// Calculate current heat (use sample data if in sample mode)
+	var positions []storage.Position
+	if state.sampleMode {
+		positions = CreateSamplePositions()
+	} else {
+		positions, _ = state.db.GetOpenPositions()
+	}
 	var totalHeat float64
 	bucketHeat := make(map[string]float64)
 
@@ -101,22 +114,28 @@ func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
 	riskLabel := widget.NewLabel("Risk Amount ($):")
 	riskEntry := widget.NewEntry()
 	// Auto-fill from session
-	riskEntry.SetText(fmt.Sprintf("%.2f", state.currentSession.SizingRiskDollars))
+	riskEntry.SetText(fmt.Sprintf("%.2f", activeSession.SizingRiskDollars))
 	riskEntry.SetPlaceHolder("750.00")
 
 	bucketSelectLabel := widget.NewLabel("Sector Bucket:")
 	bucketEntry := widget.NewEntry()
 	bucketEntry.SetPlaceHolder("Tech/Comm")
+	if state.sampleMode {
+		bucketEntry.SetText("Tech/Comm") // Sample data
+	}
 
 	testResultLabel := widget.NewLabel("")
 	testResultLabel.Wrapping = fyne.TextWrapWord
 
 	// Next button (shown after successful heat check)
 	nextBtn := widget.NewButton("Next: Trade Entry →", func() {
-		ShowStyledInformation("Next Step",
-			"Please use the tab bar to navigate to the Trade Entry tab.\n\n"+
-				"Your heat check has been saved to Session #"+fmt.Sprintf("%d", state.currentSession.SessionNum),
-			state.window)
+		message := "Please use the tab bar to navigate to the Trade Entry tab.\n\n"
+		if state.sampleMode {
+			message += "📦 Sample mode - explore Trade Entry with sample data"
+		} else {
+			message += "Your heat check has been saved to Session #" + fmt.Sprintf("%d", activeSession.SessionNum)
+		}
+		ShowStyledInformation("Next Step", message, state.window)
 	})
 	nextBtn.Importance = widget.HighImportance
 	nextBtn.Hide() // Hidden initially
@@ -139,10 +158,15 @@ func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
 			bucket = "Unknown"
 		}
 
-		// Call backend heat check - prepare request
-		positions, _ := state.db.GetOpenPositions()
-		openPositions := make([]domain.Position, len(positions))
-		for i, p := range positions {
+		// Call backend heat check - prepare request (use sample or real positions)
+		var checkPositions []storage.Position
+		if state.sampleMode {
+			checkPositions = CreateSamplePositions()
+		} else {
+			checkPositions, _ = state.db.GetOpenPositions()
+		}
+		openPositions := make([]domain.Position, len(checkPositions))
+		for i, p := range checkPositions {
 			openPositions[i] = domain.Position{
 				Ticker:      p.Ticker,
 				Bucket:      p.Bucket,
@@ -173,46 +197,54 @@ func buildHeatCheckScreen(state *AppState) fyne.CanvasObject {
 			heatStatus = "REJECT"
 		}
 
-		// Update session in database
-		err = state.db.UpdateSessionHeat(
-			state.currentSession.ID,
-			heatStatus,
-			bucket,
-			result.CurrentPortfolioHeat,
-			result.NewPortfolioHeat,
-			result.PortfolioCap,
-			result.CurrentBucketHeat,
-			result.NewBucketHeat,
-			result.BucketCap,
-		)
-		if err != nil {
-			testResultLabel.SetText(fmt.Sprintf("❌ Failed to save session: %v", err))
-			return
-		}
+		// Update session in database (skip in sample mode)
+		if !state.sampleMode {
+			err = state.db.UpdateSessionHeat(
+				activeSession.ID,
+				heatStatus,
+				bucket,
+				result.CurrentPortfolioHeat,
+				result.NewPortfolioHeat,
+				result.PortfolioCap,
+				result.CurrentBucketHeat,
+				result.NewBucketHeat,
+				result.BucketCap,
+			)
+			if err != nil {
+				testResultLabel.SetText(fmt.Sprintf("❌ Failed to save session: %v", err))
+				return
+			}
 
-		// Reload session to get updated state
-		updatedSession, err := state.db.GetSession(state.currentSession.ID)
-		if err != nil {
-			testResultLabel.SetText(fmt.Sprintf("❌ Failed to reload session: %v", err))
-			return
+			// Reload session to get updated state
+			updatedSession, err := state.db.GetSession(activeSession.ID)
+			if err != nil {
+				testResultLabel.SetText(fmt.Sprintf("❌ Failed to reload session: %v", err))
+				return
+			}
+			state.SetCurrentSession(updatedSession)
 		}
-		state.SetCurrentSession(updatedSession)
 
 		if result.Allowed {
-			testResultLabel.SetText(fmt.Sprintf(`✓ TRADE ALLOWED
+			message := fmt.Sprintf(`✓ TRADE ALLOWED
 
 New Portfolio Heat: $%.2f / $%.2f (%.1f%%)
 New Bucket Heat (%s): $%.2f / $%.2f (%.1f%%)
 
 Both caps OK!
 
-✓ Session #%d updated - ready for Trade Entry
 `, result.NewPortfolioHeat, result.PortfolioCap, result.PortfolioHeatPct,
-				bucket, result.NewBucketHeat, result.BucketCap, result.BucketHeatPct,
-				state.currentSession.SessionNum))
+				bucket, result.NewBucketHeat, result.BucketCap, result.BucketHeatPct)
+
+			if state.sampleMode {
+				message += "📦 SAMPLE MODE - Heat check shown but not saved"
+			} else {
+				message += fmt.Sprintf("✓ Session #%d updated - ready for Trade Entry", activeSession.SessionNum)
+			}
+
+			testResultLabel.SetText(message)
 			nextBtn.Show()
 		} else {
-			testResultLabel.SetText(fmt.Sprintf(`✗ TRADE REJECTED
+			message := fmt.Sprintf(`✗ TRADE REJECTED
 
 Reason: %s
 
@@ -226,20 +258,26 @@ New Bucket Heat: $%.2f
 Bucket Cap: $%.2f
 Overage: $%.2f
 
-Session #%d updated - resolve heat issues before proceeding
 `, result.RejectionReason,
 				result.CurrentPortfolioHeat, result.NewPortfolioHeat, result.PortfolioCap,
 				result.PortfolioOverage,
 				bucket, result.CurrentBucketHeat, result.NewBucketHeat, result.BucketCap,
-				result.BucketOverage,
-				state.currentSession.SessionNum))
+				result.BucketOverage)
+
+			if state.sampleMode {
+				message += "📦 SAMPLE MODE - Results shown but not saved"
+			} else {
+				message += fmt.Sprintf("Session #%d updated - resolve heat issues before proceeding", activeSession.SessionNum)
+			}
+
+			testResultLabel.SetText(message)
 			nextBtn.Hide()
 		}
 	})
 	testBtn.Importance = widget.HighImportance
 
-	// Disable heat check button if session is completed
-	if state.currentSession.Status == "COMPLETED" {
+	// Disable heat check button if session is completed (but allow in sample mode)
+	if activeSession.Status == "COMPLETED" && !state.sampleMode {
 		testBtn.Disable()
 	}
 

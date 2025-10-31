@@ -41,8 +41,8 @@ func NewSessionBar(state *AppState) *sessionBarWidget {
 		bar.updateFromSession(session)
 	})
 
-	// Initial update
-	bar.updateFromSession(state.currentSession)
+	// Initial update (use active session if in sample mode)
+	bar.updateFromSession(state.GetActiveSession())
 
 	return bar
 }

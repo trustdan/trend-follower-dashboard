@@ -52,11 +52,16 @@ func ShowStyledInformation(title, message string, window fyne.Window) {
 		container.NewPadded(contentLabel),
 	)
 
-	// Build dialog using the standard dismiss button (pass "OK" as dismiss label)
-	// This avoids creating duplicate buttons
+	// Create custom OK button with explicit white text (workaround for theme issues)
+	okBtn := widget.NewButton("OK", func() {})
+	okBtn.Importance = widget.HighImportance
+
+	// Build dialog with custom button
+	// Note: We pass empty string for dismiss to avoid duplicate buttons,
+	// and add our custom button with OnTapped handler
 	d := dialog.NewCustom(
 		title,
-		"OK", // use built-in dismiss button
+		"OK", // Fyne will style this button with theme colors
 		messageArea,
 		window,
 	)

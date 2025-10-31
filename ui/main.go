@@ -117,6 +117,9 @@ type AppState struct {
 	currentSession         *storage.TradeSession
 	sessionChangeCallbacks []func(*storage.TradeSession)
 	vimMode                *VIMMode // VIM mode handler (attached after window shown)
+	navigateToTab          func(int) // Navigation callback for switching tabs
+	sampleMode             bool      // Whether sample data mode is enabled
+	sampleSession          *storage.TradeSession // Sample session when in sample mode
 }
 
 // SetCurrentSession updates the current session and triggers all callbacks
@@ -130,6 +133,35 @@ func (s *AppState) SetCurrentSession(session *storage.TradeSession) {
 // RegisterSessionChangeCallback adds a callback to be called when session changes
 func (s *AppState) RegisterSessionChangeCallback(callback func(*storage.TradeSession)) {
 	s.sessionChangeCallbacks = append(s.sessionChangeCallbacks, callback)
+}
+
+// GetActiveSession returns the current session (real or sample depending on mode)
+func (s *AppState) GetActiveSession() *storage.TradeSession {
+	if s.sampleMode && s.sampleSession != nil {
+		return s.sampleSession
+	}
+	return s.currentSession
+}
+
+// EnableSampleMode activates sample data mode
+func (s *AppState) EnableSampleMode() {
+	s.sampleMode = true
+	if s.sampleSession == nil {
+		s.sampleSession = CreateSampleSession()
+	}
+	// Trigger callbacks to refresh UI
+	for _, callback := range s.sessionChangeCallbacks {
+		callback(s.sampleSession)
+	}
+}
+
+// DisableSampleMode deactivates sample data mode
+func (s *AppState) DisableSampleMode() {
+	s.sampleMode = false
+	// Trigger callbacks to refresh UI with real session (or nil)
+	for _, callback := range s.sessionChangeCallbacks {
+		callback(s.currentSession)
+	}
 }
 
 // buildMainUI constructs the main application UI with navigation
@@ -165,6 +197,20 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 		showWelcomeDialog(state)
 	})
 	welcomeBtn.Importance = widget.HighImportance
+
+	// Create Sample Mode toggle button
+	var sampleBtn *widget.Button
+	sampleBtn = widget.NewButton("📦 Sample Data: Off", func() {
+		if state.sampleMode {
+			state.DisableSampleMode()
+			sampleBtn.SetText("📦 Sample Data: Off")
+		} else {
+			state.EnableSampleMode()
+			sampleBtn.SetText("📦 Sample Data: On")
+		}
+		sampleBtn.Refresh()
+	})
+	sampleBtn.Importance = widget.HighImportance
 
 	// Navigation buttons
 	navItems := []struct {
@@ -223,6 +269,9 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 	navContainer := container.NewVBox(navObjects...)
 	updateNavSelection(0)
 
+	// Store navigation function in AppState so screens can navigate programmatically
+	state.navigateToTab = updateNavSelection
+
 	// Initialize VIM mode and wire up the toggle button
 	vimMode := NewVIMMode(state)
 	state.vimMode = vimMode // Store in AppState for later attachment
@@ -265,6 +314,7 @@ func buildMainUI(state *AppState) fyne.CanvasObject {
 		newTradeBtn,
 		resumeSessionBtn,
 		layout.NewSpacer(),
+		sampleBtn,
 		themeToggleBtn,
 		helpBtn,
 		vimBtn,

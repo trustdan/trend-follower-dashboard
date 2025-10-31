@@ -11,13 +11,16 @@ import (
 )
 
 func buildTradeEntryScreen(state *AppState) fyne.CanvasObject {
+	// Get active session (real or sample)
+	activeSession := state.GetActiveSession()
+
 	// Session check: require active session
-	if state.currentSession == nil {
+	if activeSession == nil && !state.sampleMode {
 		return showNoSessionPrompt(state, "Trade Entry")
 	}
 
-	// Prerequisite check: heat must be completed
-	if !state.currentSession.HeatCompleted {
+	// Prerequisite check: heat must be completed (skip in sample mode)
+	if !state.sampleMode && !activeSession.HeatCompleted {
 		return showPrerequisiteError(state, "Heat Check", "Trade Entry")
 	}
 

@@ -3,21 +3,34 @@
 **TF = Trend Following** - Systematic Donchian breakout system following Ed Seykota/Turtle Trader principles
 
 **Created:** October 29, 2025
-**Version:** 2.0.0 (Trade Sessions Release)
-**Status:** 🚀 Backend Ready | Native GUI Complete | Trade Sessions Integrated!
+**Version:** 2.0.0 (Trade Sessions + Options Trading Release)
+**Status:** 🚀 Backend Ready | Native GUI Complete | Trade Sessions + Options Integrated!
 **Backend:** ✅ 100% Functional (tf-engine in Go)
-**Frontend:** ✅ Native Fyne GUI with all 8 screens + Sessions
-**Binary:** `ui/tf-gui.exe` (50MB standalone)
+**Frontend:** ✅ Native Fyne GUI with all 8 screens + Sessions + Options
+**Binary:** `tf-gui.exe` (50MB standalone)
 
 ---
 
 ## 🚀 Quick Start
 
+**First time or after updates:**
+```powershell
+# Build/rebuild everything (includes database migration)
+.\build-windows.bat
+```
+
 **Run the native GUI:**
 ```powershell
-cd ui
 .\tf-gui.exe
 ```
+
+**During development:**
+```powershell
+# Quick GUI rebuild (fast iteration)
+.\quick-rebuild.bat
+```
+
+See [QUICK_START.md](QUICK_START.md) for troubleshooting and [BUILD_GUIDE.md](BUILD_GUIDE.md) for comprehensive build instructions.
 
 The application will:
 1. Initialize the database if needed (`trading.db`)
@@ -179,12 +192,20 @@ Based on [docs/anti-impulsivity.md](docs/anti-impulsivity.md):
 ## Directory Structure
 
 ```
-fresh-start/
+trend-follower-dashboard/
 ├── README.md                  # This file
-├── PROJECT_HISTORY.md         # What happened with Excel/VBA
-├── FRESH_START_PLAN.md        # Detailed plan for GUI
-├── ORIGINAL_README.md         # Original project README
-├── .gitignore                 # Git ignore rules
+├── CHANGELOG.md               # Version history
+├── CLAUDE.md                  # Instructions for Claude Code
+│
+├── 🔨 Build & Run Files
+├── tf-gui.exe                 # Main GUI application (50MB)
+├── migrate-db.exe             # Database migration tool (9MB)
+├── build-windows.bat          # Full build script (recommended)
+├── build-windows.ps1          # PowerShell build script
+├── quick-rebuild.bat          # Fast GUI rebuild
+├── QUICK_START.md             # Quick start guide
+├── BUILD_GUIDE.md             # Comprehensive build docs
+├── MIGRATION_INSTRUCTIONS.md  # Database migration help
 │
 ├── backend/                   # tf-engine Go backend (WORKING)
 │   ├── cmd/                   # CLI entry point
@@ -207,9 +228,11 @@ fresh-start/
 ├── docs/                      # Documentation
 │   ├── anti-impulsivity.md    # Core design philosophy ⭐
 │   ├── PROJECT_STATUS.md
-│   ├── M24_UI_IMPLEMENTATION_PLAN.md
-│   ├── UI_QUICK_REFERENCE.md
+│   ├── completed-phases/      # Completed development phases
+│   │   ├── session-integration/   # Trade sessions track
+│   │   └── options-trading/       # Options enhancement track
 │   ├── project/               # Project documentation
+│   ├── plans/                 # Planning documents
 │   ├── milestones/            # Milestone docs
 │   ├── dev/                   # Development docs
 │   └── json-schemas/          # JSON schemas

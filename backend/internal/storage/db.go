@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -300,4 +301,21 @@ func (db *DB) GetCandidatesCount(date string) (int, error) {
 		return 0, fmt.Errorf("failed to count candidates: %w", err)
 	}
 	return count, nil
+}
+
+// ClearCandidatesForDate deletes all candidates for a specific date
+func (db *DB) ClearCandidatesForDate(date string) error {
+	query := `DELETE FROM candidates WHERE date = ?`
+	result, err := db.conn.Exec(query, date)
+	if err != nil {
+		return fmt.Errorf("failed to clear candidates: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	log.Printf("Cleared %d candidates for date %s", rowsAffected, date)
+	return nil
 }
